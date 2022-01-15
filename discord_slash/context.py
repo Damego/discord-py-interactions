@@ -424,6 +424,27 @@ class SlashContext(InteractionContext):
         ret = await self.slash.invoke_command(func=command, ctx=self, args=kwargs)
         return ret
 
+    async def populate(self, choices: typing.Union[typing.List[dict], dict]):
+        """
+        This "populates" the list of choices that the client-end
+        user will be able to select from in the autocomplete field.
+
+        :param choices:
+        """
+        if not choices:
+            raise error.IncorrectFormat('Should at least 1 choice')
+        if isinstance(choices, dict):
+            choices = [choices]
+
+        data = {
+            'type': 8,
+            'data': {
+                'choices': choices
+            }
+        }
+
+        await self._http.post_initial_response(data, self.interaction_id, self._token)
+
 
 class ComponentContext(InteractionContext):
     """

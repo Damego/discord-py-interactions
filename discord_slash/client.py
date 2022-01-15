@@ -2,7 +2,6 @@ import copy
 import logging
 import re
 import typing
-import warnings
 from contextlib import suppress
 from inspect import getdoc, iscoroutinefunction
 
@@ -1396,13 +1395,6 @@ class SlashCommand:
         to_use = msg["d"]
         interaction_type = to_use["type"]
 
-        # it's time to start using the new module guys,
-        # sorry.
-        warnings.warn(
-            message='This pip module is now deprecated as of version 3.0.1a! Please use the new module "discord-py-interactions" to gain access to 3.0.2 and future versions.',
-            category=DeprecationWarning,
-        )
-
         # dis_snek variance seq
 
         if interaction_type in (1, 2):
@@ -1415,11 +1407,37 @@ class SlashCommand:
                 pass  # for some reason it complains about custom_id being an optional arg when it's fine?
             finally:
                 await self._on_context_menu(to_use)
+        elif interaction_type == 4:
+            await self._on_autocomplete(to_use)
         else:
             raise NotImplementedError(
                 f"Unknown Interaction Received: {interaction_type}"
             )  # check if discord does a sneaky event change on us
         return
+
+    async def _on_autocomplete(self, to_use):
+        def check_subcommand_autocomplete(option: dict):
+            if option.get("options"):
+                if option["type"] == 2:
+                    for group_option in option["options"]:
+                        if group_option.get("options"):
+                            for sub_option in group_option["options"]:
+                                if sub_option.get("focused"):
+                                    return sub_option["name"], sub_option["value"]
+                elif option["type"] == 1:
+                    for sub_option in option["options"]:
+                        if sub_option.get("focused"):
+                            return sub_option["name"], sub_option["value"]
+            elif option.get("focused"):
+                return option["name"], option["value"]
+
+        data = to_use["data"]
+        if data["name"] in self.commands:
+            ctx = context.SlashContext(self.req, to_use, self._discord, self.logger)
+            if data.get('options'):
+                for option in data['options']:
+                    option_name, option_value = check_subcommand_autocomplete(option)
+            self._discord.dispatch('autocomplete', ctx, option_name, option_value)
 
     async def _on_component(self, to_use):
         ctx = context.ComponentContext(self.req, to_use, self._discord, self.logger)
