@@ -1418,26 +1418,44 @@ class SlashCommand:
     async def _on_autocomplete(self, to_use):
         def check_subcommand_autocomplete(option: dict):
             if option.get("options"):
-                if option["type"] == 2:
+                if option["type"] == model.SlashCommandOptionType.SUB_COMMAND_GROUP:
                     for group_option in option["options"]:
                         if group_option.get("options"):
                             for sub_option in group_option["options"]:
                                 if sub_option.get("focused"):
                                     return sub_option["name"], sub_option["value"]
-                elif option["type"] == 1:
+                elif option["type"] == model.SlashCommandOptionType.SUB_COMMAND:
                     for sub_option in option["options"]:
                         if sub_option.get("focused"):
                             return sub_option["name"], sub_option["value"]
             elif option.get("focused"):
                 return option["name"], option["value"]
 
+        def get_option_values(data: dict):
+            options: dict = {}
+            for option in data['options']:
+                if option["type"] == model.SlashCommandOptionType.SUB_COMMAND_GROUP:
+                    for group_option in option["options"]:
+                        if group_option.get("options"):
+                            for sub_option in group_option['options']:
+                                if sub_option.get("value") is not None:
+                                    options[sub_option["name"]] = sub_option["value"]
+                elif option["type"] == model.SlashCommandOptionType.SUB_COMMAND:
+                    for sub_option in option['options']:
+                        if sub_option.get("value"):
+                            options[sub_option["name"]] = sub_option["value"]
+                return options
+
         data = to_use["data"]
         if data["name"] in self.commands:
-            ctx = context.SlashContext(self.req, to_use, self._discord, self.logger)
+            ctx = context.AutoCompleteContext(self.req, to_use, self._discord, self.logger)
             if data.get('options'):
                 for option in data['options']:
-                    option_name, option_value = check_subcommand_autocomplete(option)
-            self._discord.dispatch('autocomplete', ctx, option_name, option_value)
+                    focused_option, user_input = check_subcommand_autocomplete(option)
+                ctx.focused_option = focused_option
+                ctx.user_input = user_input
+                options = get_option_values(data)
+            self._discord.dispatch('autocomplete', ctx, **options)
 
     async def _on_component(self, to_use):
         ctx = context.ComponentContext(self.req, to_use, self._discord, self.logger)
