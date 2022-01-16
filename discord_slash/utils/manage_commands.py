@@ -229,6 +229,7 @@ def create_option(
     description: str,
     option_type: typing.Union[int, type],
     required: bool,
+    autocomplete: bool = False,
     choices: list = None,
 ) -> dict:
     """
@@ -238,6 +239,7 @@ def create_option(
     :param description: Description of the option.
     :param option_type: Type of the option.
     :param required: Whether this option is required.
+    :param autocomplete: A status denoting whether this option is an autocomplete option.
     :param choices: Choices of the option. Can be empty.
     :return: dict
 
@@ -246,7 +248,7 @@ def create_option(
         You must set the the relevant argument's function to a default argument, eg ``argname = None``.
 
     .. note::
-        ``choices`` must either be a list of `option type dicts <https://discord.com/developers/docs/interactions/application-commands#application-command-object-application-command-option-choice-structure>`_
+        ``choices`` must either be a list of `option type dicts <https://discord.com/developers/docs/interactions/slash-commands#applicationcommandoptionchoice>`_
         or a list of single string values.
     """
     if not isinstance(option_type, int) or isinstance(
@@ -268,6 +270,7 @@ def create_option(
         "description": description,
         "type": option_type,
         "required": required,
+        "autocomplete": autocomplete,
         "choices": choices,
     }
 
@@ -403,3 +406,4 @@ def generate_permissions(
         )
 
     return permissions
+
