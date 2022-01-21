@@ -72,6 +72,8 @@ class InteractionContext:
         else:
             self.author = discord.User(data=_json["user"], state=self.bot._connection)
         self.created_at: datetime.datetime = snowflake_time(int(self.interaction_id))
+        self.locale = _json["locale"]
+        self.guild_locale = _json["guild_locale"]
 
     @property
     def _deffered_hidden(self):
@@ -425,17 +427,16 @@ class SlashContext(InteractionContext):
         return ret
 
 
-class AutoCompleteContext(SlashContext):
+class AutoCompleteContext(InteractionContext):
     """
-        Context of a autocomplete slash command option. Has all attributes from :class:`InteractionContext`, plus the slash-command-specific and autocomplete data below.
+        Context of a autocomplete slash command option. Has all attributes from :class:`InteractionContext`, autocomplete data below.
 
         :ivar name: Name of the command.
-        :ivar args: List of processed arguments invoked with the command.
-        :ivar kwargs: Dictionary of processed arguments invoked with the command.
         :ivar subcommand_name: Subcommand of the command.
         :ivar subcommand_group: Subcommand group of the command.
-        :ivar focused_option: The focused autocomplete option
-        :ivar user_input: Current user input for focused_option
+        :ivar focused_option: The focused autocomplete option.
+        :ivar user_input: Current user input for focused_option.
+        :ivar options: Dictionary of current passed arguments.
         :ivar command_id: ID of the command.
         """
 
@@ -447,8 +448,6 @@ class AutoCompleteContext(SlashContext):
         logger,
     ):
         self.name = self.command = self.invoked_with = _json["data"]["name"]
-        self.args = []
-        self.kwargs = {}
         self.subcommand_name = self.invoked_subcommand = self.subcommand_passed = None
         self.subcommand_group = self.invoked_subcommand_group = self.subcommand_group_passed = None
         self.focused_option = None
@@ -456,6 +455,48 @@ class AutoCompleteContext(SlashContext):
         self.command_id = _json["data"]["id"]
 
         super().__init__(_http=_http, _json=_json, _discord=_discord, logger=logger)
+
+        options: dict = {}
+        for option in _json["data"]["options"]:
+            if option["type"] == model.SlashCommandOptionType.SUB_COMMAND_GROUP:
+                self.subcommand_group = option["name"]
+                for group_option in option["options"]:
+                    if group_option["type"] == model.SlashCommandOptionType.SUB_COMMAND:
+                        self.subcommand_name = group_option["name"]
+                    if group_option.get("options"):
+                        for sub_option in group_option['options']:
+                            if sub_option.get("value") is not None:
+                                options[sub_option["name"]] = sub_option["value"]
+            elif option["type"] == model.SlashCommandOptionType.SUB_COMMAND:
+                self.subcommand_name = option["name"]
+                for sub_option in option['options']:
+                    if sub_option.get("value"):
+                        options[sub_option["name"]] = sub_option["value"]
+        self.options = options
+
+    @property
+    def slash(self) -> "client.SlashCommand":
+        """
+        Returns the associated SlashCommand object created during Runtime.
+
+        :return: client.SlashCommand
+        """
+        return self.bot.slash  # noqa
+
+    @property
+    def cog(self) -> typing.Optional[commands.Cog]:
+        """
+        Returns the cog associated with the command invoked, if any.
+
+        :return: Optional[commands.Cog]
+        """
+
+        cmd_obj = self.slash.commands[self.command]
+
+        if isinstance(cmd_obj, (model.CogBaseCommandObject, model.CogSubcommandObject)):
+            return cmd_obj.cog
+        else:
+            return None
 
     async def populate(self, choices: typing.Union[typing.List[dict], dict]):
         """
