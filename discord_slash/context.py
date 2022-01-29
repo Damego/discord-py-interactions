@@ -73,7 +73,7 @@ class InteractionContext:
             self.author = discord.User(data=_json["user"], state=self.bot._connection)
         self.created_at: datetime.datetime = snowflake_time(int(self.interaction_id))
         self.locale = _json["locale"]
-        self.guild_locale = _json["guild_locale"]
+        self.guild_locale = _json.get("guild_locale")
 
     @property
     def _deffered_hidden(self):
