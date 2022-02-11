@@ -5,13 +5,31 @@ import typing
 from contextlib import suppress
 from inspect import getdoc, iscoroutinefunction
 
-from discord import Client, Message, Guild, HTTPException, Forbidden, NotFound
-from discord.ext.commands import AutoShardedBot, Bot, Cog 
+from discord import Client, Forbidden, Guild, HTTPException, Message, NotFound
+from discord.ext.commands import AutoShardedBot, Bot, Cog
 
-from .context import SlashContext, ComponentContext, AutoCompleteContext, MenuContext, ModalContext
-from .error import IncorrectFormat, DuplicateCallback, DuplicateCommand, IncorrectGuildIDType, DuplicateSlashClient
-from .model import BaseCommandObject, CogBaseCommandObject, CogSubcommandObject, SlashCommandOptionType, CogComponentCallbackObject, SubcommandObject, GuildPermissionsData, CommandData, ComponentCallbackObject, InteractionType, InteractionEventType
+from .context import AutoCompleteContext, ComponentContext, MenuContext, ModalContext, SlashContext
+from .error import (
+    DuplicateCallback,
+    DuplicateCommand,
+    DuplicateSlashClient,
+    IncorrectFormat,
+    IncorrectGuildIDType,
+)
 from .http import SlashCommandRequest
+from .model import (
+    BaseCommandObject,
+    CogBaseCommandObject,
+    CogComponentCallbackObject,
+    CogSubcommandObject,
+    CommandData,
+    ComponentCallbackObject,
+    GuildPermissionsData,
+    InteractionEventType,
+    InteractionType,
+    SlashCommandOptionType,
+    SubcommandObject,
+)
 from .utils.manage_commands import generate_options
 from .utils.manage_components import get_components_ids, get_messages_ids
 
@@ -150,11 +168,7 @@ class SlashCommand:
         self._get_cog_component_callbacks(cog, func_list)
 
     def _get_cog_slash_commands(self, cog, func_list):
-        res = [
-            x
-            for x in func_list
-            if isinstance(x, (CogBaseCommandObject, CogSubcommandObject))
-        ]
+        res = [x for x in func_list if isinstance(x, (CogBaseCommandObject, CogSubcommandObject))]
 
         for x in res:
             x.cog = cog
@@ -219,11 +233,7 @@ class SlashCommand:
         self._remove_cog_component_callbacks(func_list)
 
     def _remove_cog_slash_commands(self, func_list):
-        res = [
-            x
-            for x in func_list
-            if isinstance(x, (CogBaseCommandObject, CogSubcommandObject))
-        ]
+        res = [x for x in func_list if isinstance(x, (CogBaseCommandObject, CogSubcommandObject))]
         for x in res:
             if isinstance(x, CogBaseCommandObject):
                 if x.name not in self.commands:
@@ -533,9 +543,7 @@ class SlashCommand:
                     if new_perm["id"] not in existing_perms_model:
                         changed = True
                         break
-                    if existing_perms_model[new_perm["id"]] != GuildPermissionsData(
-                        **new_perm
-                    ):
+                    if existing_perms_model[new_perm["id"]] != GuildPermissionsData(**new_perm):
                         changed = True
                         break
 
@@ -1093,9 +1101,7 @@ class SlashCommand:
         if message_ids == [None] and custom_ids == [None]:
             raise IncorrectFormat("You must specify messages or components (or both)")
 
-        callback_obj = ComponentCallbackObject(
-            callback, message_ids, custom_ids, component_type
-        )
+        callback_obj = ComponentCallbackObject(callback, message_ids, custom_ids, component_type)
         self._add_comp_callback_obj(callback_obj)
         return callback_obj
 
@@ -1443,12 +1449,12 @@ class SlashCommand:
         data = to_use["data"]
         if data["name"] in self.commands:
             ctx = AutoCompleteContext(self.req, to_use, self._discord, self.logger)
-            if data.get('options'):
-                for option in data['options']:
+            if data.get("options"):
+                for option in data["options"]:
                     focused_option, user_input = check_subcommand_autocomplete(option)
                 ctx.focused_option = focused_option
                 ctx.user_input = user_input
-            self._discord.dispatch('autocomplete', ctx)
+            self._discord.dispatch("autocomplete", ctx)
 
     async def _on_component(self, to_use):
         ctx = ComponentContext(self.req, to_use, self._discord, self.logger)

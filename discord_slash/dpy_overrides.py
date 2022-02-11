@@ -1,6 +1,17 @@
 from typing import List, Optional, Union
 
-from discord import AllowedMentions, Attachment, Embed, File, InvalidArgument, Message, MessageFlags, abc, http, utils
+from discord import (
+    AllowedMentions,
+    Attachment,
+    Embed,
+    File,
+    InvalidArgument,
+    Message,
+    MessageFlags,
+    abc,
+    http,
+    utils,
+)
 from discord.ext import commands
 from discord.http import Route
 
@@ -35,7 +46,7 @@ class ComponentMessage(Message):
         suppress: bool = None,
         attachments: List[Attachment] = None,
         allowed_mentions: Optional[AllowedMentions] = None,
-        components: List[Union[ActionRow, Component, List[Component]]] = None
+        components: List[Union[ActionRow, Component, List[Component]]] = None,
     ):
         state = self._state
         data = {}
@@ -44,9 +55,7 @@ class ComponentMessage(Message):
             data["content"] = content
 
         if embed is not None and embeds is not None:
-            raise InvalidArgument(
-                "cannot pass both embed and embeds parameter to edit()"
-            )
+            raise InvalidArgument("cannot pass both embed and embeds parameter to edit()")
 
         if embed is not None:
             data["embeds"] = [embed.to_dict()]
@@ -60,15 +69,10 @@ class ComponentMessage(Message):
             data["flags"] = flags.value
 
         if allowed_mentions is None:
-            if (
-                state.allowed_mentions is not None
-                and self.author.id == self._state.self_id
-            ):
+            if state.allowed_mentions is not None and self.author.id == self._state.self_id:
                 data["allowed_mentions"] = state.allowed_mentions.to_dict()
         elif state.allowed_mentions is not None:
-                data["allowed_mentions"] = state.allowed_mentions.merge(
-                    allowed_mentions
-                ).to_dict()
+            data["allowed_mentions"] = state.allowed_mentions.merge(allowed_mentions).to_dict()
         else:
             data["allowed_mentions"] = allowed_mentions.to_dict()
 

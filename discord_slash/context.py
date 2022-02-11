@@ -1,6 +1,5 @@
 import datetime
-from typing import Union, List, Optional
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional, Union
 from warnings import warn
 
 import discord
@@ -8,8 +7,8 @@ from discord.ext import commands
 from discord.utils import snowflake_time
 
 from . import error, http, model
+from .component import ActionRow, Button, Modal, Select, _get_components_json
 from .dpy_overrides import ComponentMessage
-from .component import ActionRow, Button, Select, Modal, _get_components_json
 
 if TYPE_CHECKING:
     from . import client
@@ -340,14 +339,9 @@ class InteractionContext:
         )
 
     async def popup(self, modal: Modal):
-        payload = {
-            "type": model.InteractionCallbackType.MODAL.value,
-            "data": modal.to_dict()
-        }
+        payload = {"type": model.InteractionCallbackType.MODAL.value, "data": modal.to_dict()}
 
-        await self._http.post_initial_response(
-            payload, self.interaction_id, self._token
-        )
+        await self._http.post_initial_response(payload, self.interaction_id, self._token)
 
         self.responded = True
 
@@ -440,16 +434,16 @@ class SlashContext(InteractionContext):
 
 class AutoCompleteContext(InteractionContext):
     """
-        Context of a autocomplete slash command option. Has all attributes from :class:`InteractionContext`, autocomplete data below.
+    Context of a autocomplete slash command option. Has all attributes from :class:`InteractionContext`, autocomplete data below.
 
-        :ivar name: Name of the command.
-        :ivar subcommand_name: Subcommand of the command.
-        :ivar subcommand_group: Subcommand group of the command.
-        :ivar focused_option: The focused autocomplete option.
-        :ivar user_input: Current user input for focused_option.
-        :ivar options: Dictionary of current passed arguments.
-        :ivar command_id: ID of the command.
-        """
+    :ivar name: Name of the command.
+    :ivar subcommand_name: Subcommand of the command.
+    :ivar subcommand_group: Subcommand group of the command.
+    :ivar focused_option: The focused autocomplete option.
+    :ivar user_input: Current user input for focused_option.
+    :ivar options: Dictionary of current passed arguments.
+    :ivar command_id: ID of the command.
+    """
 
     def __init__(
         self,
@@ -475,12 +469,12 @@ class AutoCompleteContext(InteractionContext):
                     if group_option["type"] == model.SlashCommandOptionType.SUB_COMMAND:
                         self.subcommand_name = group_option["name"]
                     if group_option.get("options"):
-                        for sub_option in group_option['options']:
+                        for sub_option in group_option["options"]:
                             if sub_option.get("value") is not None:
                                 options[sub_option["name"]] = sub_option["value"]
             elif option["type"] == model.SlashCommandOptionType.SUB_COMMAND:
                 self.subcommand_name = option["name"]
-                for sub_option in option['options']:
+                for sub_option in option["options"]:
                     if sub_option.get("value"):
                         options[sub_option["name"]] = sub_option["value"]
         self.options = options
@@ -517,30 +511,29 @@ class AutoCompleteContext(InteractionContext):
         :param choices:
         """
         if not choices:
-            raise error.IncorrectFormat('Should at least 1 choice')
+            raise error.IncorrectFormat("Should at least 1 choice")
         if isinstance(choices, dict):
             choices = [choices]
 
         data = {
-            'type': model.InteractionCallbackType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
-            'data': {
-                'choices': choices
-            }
+            "type": model.InteractionCallbackType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
+            "data": {"choices": choices},
         }
 
         await self._http.post_initial_response(data, self.interaction_id, self._token)
-    
+
         self.responded = True
+
 
 class ModalContext(InteractionContext):
     """
-        Context of a modal interaction. Has all attributes from :class:`InteractionContext`
+    Context of a modal interaction. Has all attributes from :class:`InteractionContext`
 
-        :ivar origin_message: The origin message of the component. Not available if the origin message was ephemeral.
-        :ivar custom_id: custom_id of modal.
-        :ivar components: TextInput components.
-        :ivar values: inputted values of TextInput components.
-        """
+    :ivar origin_message: The origin message of the component. Not available if the origin message was ephemeral.
+    :ivar custom_id: custom_id of modal.
+    :ivar components: TextInput components.
+    :ivar values: inputted values of TextInput components.
+    """
 
     def __init__(
         self,
@@ -556,7 +549,9 @@ class ModalContext(InteractionContext):
                 state=self.bot._connection, channel=self.channel, data=message_data
             )
         self.custom_id = _json["data"]["custom_id"]
-        self.components = [ActionRow.from_json(component) for component in _json["data"]["components"]]
+        self.components = [
+            ActionRow.from_json(component) for component in _json["data"]["components"]
+        ]
         self.values = {}
         for row in self.components:
             for component in row.components:
@@ -687,7 +682,11 @@ class ComponentContext(InteractionContext):
             _resp["content"] = content
 
         try:
-            components = fields["components"] if isinstance(fields["components"], dict) else _get_components_json(fields["components"])
+            components = (
+                fields["components"]
+                if isinstance(fields["components"], dict)
+                else _get_components_json(fields["components"])
+            )
         except KeyError:
             pass
         else:

@@ -9,8 +9,8 @@ import discord
 from discord.ext.commands import BucketType, CommandOnCooldown, CooldownMapping
 
 from . import error, http
-from .dpy_overrides import ComponentMessage
 from .component import _get_components_json
+from .dpy_overrides import ComponentMessage
 
 
 class ChoiceData:
@@ -726,6 +726,7 @@ class InteractionCallbackType(IntEnum):
     UPDATE_MESSAGE = 7
     APPLICATION_COMMAND_AUTOCOMPLETE_RESULT = 8
     MODAL = 9
+
 
 class InteractionEventType(IntEnum):
     button_click = 2

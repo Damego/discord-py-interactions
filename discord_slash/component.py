@@ -1,17 +1,15 @@
-from re import S
-from typing import Optional, Union, List, Iterable
-
-from discord import PartialEmoji, Emoji, InvalidArgument
-
-from uuid import uuid1
 from enum import IntEnum
+from typing import Iterable, List, Optional, Union
+from uuid import uuid1
+
+from discord import Emoji, InvalidArgument, PartialEmoji
 
 __all__ = (
     "Component",
     "ButtonStyle",
     "Button",
     "TextInputStyle",
-    "TextInput"
+    "TextInput",
     "Modal",
     "Select",
     "SelectOption",
@@ -52,8 +50,9 @@ class TextInput(Component):
         "_placeholder",
         "_min_length",
         "_max_length",
-        "_value"
+        "_value",
     )
+
     def __init__(
         self,
         *,
@@ -99,7 +98,7 @@ class TextInput(Component):
     @label.setter
     def label(self, value: str):
         self._label = value
-        
+
     @property
     def min_length(self):
         return self._min_length
@@ -164,18 +163,15 @@ class TextInput(Component):
             max_length=data.get("max_length"),
             required=data.get("required"),
             value=data.get("value"),
-            placeholder=data.get("placeholder")
+            placeholder=data.get("placeholder"),
         )
 
 
 class Modal(Component):
     __slots__ = ("_custom_id", "_title", "_components")
+
     def __init__(
-        self,
-        *,
-        custom_id: str = None,
-        title: str = None,
-        components: List[TextInput] = None
+        self, *, custom_id: str = None, title: str = None, components: List[TextInput] = None
     ):
         self._custom_id = custom_id or str(uuid1)
         self._title = title
@@ -186,7 +182,7 @@ class Modal(Component):
         data = {
             "custom_id": self._custom_id,
             "title": self._title,
-            "components": [ActionRow(component).to_dict() for component in self._components]
+            "components": [ActionRow(component).to_dict() for component in self._components],
         }
         return data
 
@@ -540,18 +536,14 @@ class Button(Component):
     @id.setter
     def id(self, value: str):
         if self.style == ButtonStyle.URL:
-            raise InvalidArgument(
-                "Button style is set to URL. You shouldn't provide ID."
-            )
+            raise InvalidArgument("Button style is set to URL. You shouldn't provide ID.")
 
         self._id = value
 
     @custom_id.setter
     def custom_id(self, value: str):
         if self.style == ButtonStyle.URL:
-            raise InvalidArgument(
-                "Button style is set to URL. You shouldn't provide ID."
-            )
+            raise InvalidArgument("Button style is set to URL. You shouldn't provide ID.")
 
         self._id = value
 
@@ -663,13 +655,9 @@ class ActionRow(Component):
     def from_json(cls, data: dict):
         components = data.get("components")
         if all(component.get("type") == 2 for component in components):
-            return cls(
-                *[Button.from_json(component) for component in data.get("components")]
-            )
+            return cls(*[Button.from_json(component) for component in data.get("components")])
         elif all(component.get("type") == 4 for component in components):
-            return cls(
-                *[TextInput.from_json(component) for component in data.get("components")]
-            )
+            return cls(*[TextInput.from_json(component) for component in data.get("components")])
 
 
 def _get_component_type(type: int):
