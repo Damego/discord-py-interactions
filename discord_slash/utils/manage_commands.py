@@ -231,7 +231,7 @@ def create_option(
     option_type: typing.Union[int, SlashCommandOptionType],
     required: bool = True,
     choices: list = None,
-    channel_types: typing.List[typing.Union[int, ChannelType]] = [],
+    channel_types: typing.List[typing.Union[int, ChannelType]] = None,
     min_value: int = None,
     max_value: int = None,
     autocomplete: bool = False,
@@ -267,6 +267,7 @@ def create_option(
             raise IncorrectType(
                 f"The type {original_type} is not recognized as a type that Discord accepts for slash commands."
             )
+    channel_types = channel_types or []
     _channel_types = []
     for channel in channel_types:
         if isinstance(channel, ChannelType):
