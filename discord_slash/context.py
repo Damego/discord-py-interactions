@@ -522,13 +522,15 @@ class AutoCompleteContext(InteractionContext):
             choices = [choices]
 
         data = {
-            'type': 8,
+            'type': model.InteractionCallbackType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
             'data': {
                 'choices': choices
             }
         }
 
         await self._http.post_initial_response(data, self.interaction_id, self._token)
+    
+        self.responded = True
 
 class ModalContext(InteractionContext):
     """
