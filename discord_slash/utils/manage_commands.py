@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import Union
 
 import aiohttp
+from discord import ChannelType
 
 from ..error import IncorrectType, RequestFailure
 from ..model import SlashCommandOptionType, SlashCommandPermissionType
@@ -227,10 +228,13 @@ async def update_guild_commands_permissions(bot_id, bot_token, guild_id, cmd_per
 def create_option(
     name: str,
     description: str,
-    option_type: typing.Union[int, type],
-    required: bool,
-    autocomplete: bool = False,
+    option_type: typing.Union[int, SlashCommandOptionType],
+    required: bool = True,
     choices: list = None,
+    channel_types: typing.List[typing.Union[int, ChannelType]] = None,
+    min_value: int = None,
+    max_value: int = None,
+    autocomplete: bool = False,
 ) -> dict:
     """
     Creates option used for creating slash command.
@@ -239,8 +243,11 @@ def create_option(
     :param description: Description of the option.
     :param option_type: Type of the option.
     :param required: Whether this option is required.
-    :param autocomplete: A status denoting whether this option is an autocomplete option.
     :param choices: Choices of the option. Can be empty.
+    :param channel_types: Array of channel types. if the option is a channel type, the channels shown will be restricted to these types.
+    :param min_value: If the option is an INTEGER or FLOAT type, the minimum value permitted.
+    :param max_value: If the option is an INTEGER or FLOAT type, the maximum value permitted.
+    :param autocomplete: A status denoting whether this option is an autocomplete option.
     :return: dict
 
     .. note::
@@ -248,7 +255,7 @@ def create_option(
         You must set the the relevant argument's function to a default argument, eg ``argname = None``.
 
     .. note::
-        ``choices`` must either be a list of `option type dicts <https://discord.com/developers/docs/interactions/slash-commands#applicationcommandoptionchoice>`_
+        ``choices`` must either be a list of `option type dicts https://discord.com/developers/docs/interactions/application-commands#application-command-object-application-command-option-choice-structure`_
         or a list of single string values.
     """
     if not isinstance(option_type, int) or isinstance(
@@ -260,6 +267,17 @@ def create_option(
             raise IncorrectType(
                 f"The type {original_type} is not recognized as a type that Discord accepts for slash commands."
             )
+    channel_types = channel_types or []
+    _channel_types = []
+    for channel in channel_types:
+        if isinstance(channel, ChannelType):
+            _channel_types.append(channel.value)
+        elif isinstance(channel, int):
+            _channel_types.append(channel)
+        else:
+            raise IncorrectType(
+                f"The channel type {channel} is not recognized as a type that Discord accepts for channel_types."
+            )
     choices = choices or []
     choices = [
         choice if isinstance(choice, dict) else {"name": choice, "value": choice}
@@ -270,8 +288,11 @@ def create_option(
         "description": description,
         "type": option_type,
         "required": required,
-        "autocomplete": autocomplete,
         "choices": choices,
+        "channel_types": _channel_types,
+        "min_value": min_value,
+        "max_value": max_value,
+        "autocomplete": autocomplete,
     }
 
 
