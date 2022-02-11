@@ -1,5 +1,5 @@
 import datetime
-import typing
+from typing import Union, List, Optional
 from typing import TYPE_CHECKING
 from warnings import warn
 
@@ -9,8 +9,9 @@ from discord.utils import snowflake_time
 
 from . import error, http, model
 from .dpy_overrides import ComponentMessage
+from .component import ActionRow, Button, Select, Modal, _get_components_json
 
-if TYPE_CHECKING:  # circular import sucks for typehinting
+if TYPE_CHECKING:
     from . import client
 
 
@@ -43,7 +44,7 @@ class InteractionContext:
         self,
         _http: http.SlashCommandRequest,
         _json: dict,
-        _discord: typing.Union[discord.Client, commands.Bot],
+        _discord: Union[discord.Client, commands.Bot],
         logger,
     ):
         self._token = _json["token"]
@@ -104,7 +105,7 @@ class InteractionContext:
         self.deferred = value
 
     @property
-    def guild(self) -> typing.Optional[discord.Guild]:
+    def guild(self) -> Optional[discord.Guild]:
         """
         Guild instance of the command invoke. If the command was invoked in DM, then it is ``None``
 
@@ -113,7 +114,7 @@ class InteractionContext:
         return self.bot.get_guild(self.guild_id) if self.guild_id else None
 
     @property
-    def channel(self) -> typing.Optional[typing.Union[discord.TextChannel, discord.DMChannel]]:
+    def channel(self) -> Optional[Union[discord.TextChannel, discord.DMChannel]]:
         """
         Channel instance of the command invoke.
 
@@ -122,7 +123,7 @@ class InteractionContext:
         return self.bot.get_channel(self.channel_id)
 
     @property
-    def voice_client(self) -> typing.Optional[discord.VoiceProtocol]:
+    def voice_client(self) -> Optional[discord.VoiceProtocol]:
         """
         VoiceClient instance of the command invoke. If the command was invoked in DM, then it is ``None``.
         If the bot is not connected to any Voice/Stage channels, then it is ``None``.
@@ -132,7 +133,7 @@ class InteractionContext:
         return self.guild.voice_client if self.guild else None
 
     @property
-    def me(self) -> typing.Union[discord.Member, discord.ClientUser]:
+    def me(self) -> Union[discord.Member, discord.ClientUser]:
         """
         Bot member instance of the command invoke. If the command was invoked in DM, then it is ``discord.ClientUser``.
 
@@ -160,14 +161,14 @@ class InteractionContext:
         content: str = "",
         *,
         embed: discord.Embed = None,
-        embeds: typing.List[discord.Embed] = None,
+        embeds: List[discord.Embed] = None,
         tts: bool = False,
         file: discord.File = None,
-        files: typing.List[discord.File] = None,
+        files: List[discord.File] = None,
         allowed_mentions: discord.AllowedMentions = None,
         hidden: bool = False,
         delete_after: float = None,
-        components: typing.List[dict] = None,
+        components: Union[List[dict], List[Union[ActionRow, Button, Select]], Modal] = None,
     ) -> model.SlashMessage:
         """
         Sends response of the interaction.
@@ -214,10 +215,8 @@ class InteractionContext:
             files = [file]
         if delete_after and hidden:
             raise error.IncorrectFormat("You can't delete a hidden message!")
-        if components and not all(comp.get("type") == 1 for comp in components):
-            raise error.IncorrectFormat(
-                "The top level of the components list must be made of ActionRows!"
-            )
+        if components:
+            components = _get_components_json(components)
 
         if allowed_mentions is not None:
             if self.bot.allowed_mentions is not None:
@@ -287,14 +286,14 @@ class InteractionContext:
         content: str = "",
         *,
         embed: discord.Embed = None,
-        embeds: typing.List[discord.Embed] = None,
+        embeds: List[discord.Embed] = None,
         tts: bool = False,
         file: discord.File = None,
-        files: typing.List[discord.File] = None,
+        files: List[discord.File] = None,
         allowed_mentions: discord.AllowedMentions = None,
         hidden: bool = False,
         delete_after: float = None,
-        components: typing.List[dict] = None,
+        components: Union[List[dict], List[Union[ActionRow, Button, Select]], Modal] = None,
     ) -> model.SlashMessage:
         """
         Sends response of the interaction. This is currently an alias of the ``.send()`` method.
@@ -340,6 +339,18 @@ class InteractionContext:
             components=components,
         )
 
+    async def popup(self, modal: Modal):
+        payload = {
+            "type": model.InteractionCallbackType.MODAL.value,
+            "data": modal.to_dict()
+        }
+
+        await self._http.post_initial_response(
+            payload, self.interaction_id, self._token
+        )
+
+        self.responded = True
+
 
 class SlashContext(InteractionContext):
     """
@@ -357,7 +368,7 @@ class SlashContext(InteractionContext):
         self,
         _http: http.SlashCommandRequest,
         _json: dict,
-        _discord: typing.Union[discord.Client, commands.Bot],
+        _discord: Union[discord.Client, commands.Bot],
         logger,
     ):
         self.name = self.command = self.invoked_with = _json["data"]["name"]
@@ -379,7 +390,7 @@ class SlashContext(InteractionContext):
         return self.bot.slash  # noqa
 
     @property
-    def cog(self) -> typing.Optional[commands.Cog]:
+    def cog(self) -> Optional[commands.Cog]:
         """
         Returns the cog associated with the command invoked, if any.
 
@@ -444,7 +455,7 @@ class AutoCompleteContext(InteractionContext):
         self,
         _http: http.SlashCommandRequest,
         _json: dict,
-        _discord: typing.Union[discord.Client, commands.Bot],
+        _discord: Union[discord.Client, commands.Bot],
         logger,
     ):
         self.name = self.command = self.invoked_with = _json["data"]["name"]
@@ -484,7 +495,7 @@ class AutoCompleteContext(InteractionContext):
         return self.bot.slash  # noqa
 
     @property
-    def cog(self) -> typing.Optional[commands.Cog]:
+    def cog(self) -> Optional[commands.Cog]:
         """
         Returns the cog associated with the command invoked, if any.
 
@@ -498,7 +509,7 @@ class AutoCompleteContext(InteractionContext):
         else:
             return None
 
-    async def populate(self, choices: typing.Union[typing.List[dict], dict]):
+    async def populate(self, choices: Union[List[dict], dict]):
         """
         This "populates" the list of choices that the client-end
         user will be able to select from in the autocomplete field.
@@ -519,6 +530,36 @@ class AutoCompleteContext(InteractionContext):
 
         await self._http.post_initial_response(data, self.interaction_id, self._token)
 
+class ModalContext(InteractionContext):
+    """
+        Context of a modal interaction. Has all attributes from :class:`InteractionContext`
+
+        :ivar origin_message: The origin message of the component. Not available if the origin message was ephemeral.
+        :ivar custom_id: custom_id of modal.
+        :ivar components: TextInput components.
+        :ivar values: inputted values of TextInput components.
+        """
+
+    def __init__(
+        self,
+        _http: http.SlashCommandRequest,
+        _json: dict,
+        _discord: Union[discord.Client, commands.Bot],
+        logger,
+    ):
+        super().__init__(_http=_http, _json=_json, _discord=_discord, logger=logger)
+        self.origin_message = None
+        if message_data := _json.get("message"):
+            self.origin_message = ComponentMessage(
+                state=self.bot._connection, channel=self.channel, data=message_data
+            )
+        self.custom_id = _json["data"]["custom_id"]
+        self.components = [ActionRow.from_json(component) for component in _json["data"]["components"]]
+        self.values = {}
+        for row in self.components:
+            for component in row.components:
+                self.values[component.custom_id] = component.value
+
 
 class ComponentContext(InteractionContext):
     """
@@ -536,7 +577,7 @@ class ComponentContext(InteractionContext):
         self,
         _http: http.SlashCommandRequest,
         _json: dict,
-        _discord: typing.Union[discord.Client, commands.Bot],
+        _discord: Union[discord.Client, commands.Bot],
         logger,
     ):
         self.custom_id = self.component_id = _json["data"]["custom_id"]
@@ -600,14 +641,14 @@ class ComponentContext(InteractionContext):
         content: str = "",
         *,
         embed: discord.Embed = None,
-        embeds: typing.List[discord.Embed] = None,
+        embeds: List[discord.Embed] = None,
         tts: bool = False,
         file: discord.File = None,
-        files: typing.List[discord.File] = None,
+        files: List[discord.File] = None,
         allowed_mentions: discord.AllowedMentions = None,
         hidden: bool = False,
         delete_after: float = None,
-        components: typing.List[dict] = None,
+        components: Union[List[dict], List[Union[ActionRow, Button, Select]], Modal] = None,
     ) -> model.SlashMessage:
         if self.deferred and self._deferred_edit_origin:
             self._logger.warning(
@@ -644,7 +685,7 @@ class ComponentContext(InteractionContext):
             _resp["content"] = content
 
         try:
-            components = fields["components"]
+            components = fields["components"] if isinstance(fields["components"], dict) else _get_components_json(fields["components"])
         except KeyError:
             pass
         else:
@@ -744,7 +785,7 @@ class MenuContext(InteractionContext):
         self,
         _http: http.SlashCommandRequest,
         _json: dict,
-        _discord: typing.Union[discord.Client, commands.Bot],
+        _discord: Union[discord.Client, commands.Bot],
         logger,
     ):
         super().__init__(_http=_http, _json=_json, _discord=_discord, logger=logger)
@@ -789,7 +830,7 @@ class MenuContext(InteractionContext):
                 pass
 
     @property
-    def cog(self) -> typing.Optional[commands.Cog]:
+    def cog(self) -> Optional[commands.Cog]:
         """
         Returns the cog associated with the command invoked, if any.
 
@@ -843,14 +884,14 @@ class MenuContext(InteractionContext):
         content: str = "",
         *,
         embed: discord.Embed = None,
-        embeds: typing.List[discord.Embed] = None,
+        embeds: List[discord.Embed] = None,
         tts: bool = False,
         file: discord.File = None,
-        files: typing.List[discord.File] = None,
+        files: List[discord.File] = None,
         allowed_mentions: discord.AllowedMentions = None,
         hidden: bool = False,
         delete_after: float = None,
-        components: typing.List[dict] = None,
+        components: Union[List[dict], List[Union[ActionRow, Button, Select]], Modal] = None,
     ) -> model.SlashMessage:
         if self.deferred and self._deferred_edit_origin:
             self._logger.warning(
