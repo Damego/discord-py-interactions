@@ -1,40 +1,121 @@
-import typing
+from typing import List, Optional, Union
 
-import discord
-from discord import AllowedMentions, File, InvalidArgument, abc, http, utils
+from discord import (
+    AllowedMentions,
+    Attachment,
+    Embed,
+    File,
+    InvalidArgument,
+    Message,
+    MessageFlags,
+    User,
+    abc,
+    http,
+    utils,
+)
 from discord.ext import commands
 from discord.http import Route
 
+from .component import ActionRow, Component, _get_component_type, _get_components_json
 
-class ComponentMessage(discord.Message):
-    __slots__ = tuple(list(discord.Message.__slots__) + ["components"])
+
+class MessageInteraction:
+    def __init__(self, *, state, data) -> None:
+        self.type = data["type"]
+        self.name = data["name"]
+        self.id = data["id"]
+        self.author_id = int(data["user"]["id"])
+        self.author = User(data=data["user"], state=state)
+
+
+class ComponentMessage(Message):
+    __slots__ = tuple(list(Message.__slots__) + ["components", "interaction"])
 
     def __init__(self, *, state, channel, data):
         super().__init__(state=state, channel=channel, data=data)
-        self.components = data["components"]
 
-    def get_component(self, custom_id: int) -> typing.Optional[dict]:
-        """
-        Returns first component with matching custom_id
+        components = []
+        for i in data["components"]:
+            components.append(ActionRow())
+            for j in i["components"]:
+                components[-1].append(_get_component_type(j["type"]).from_json(j))
+        self.components: List[ActionRow] = components
+        self.interaction = (
+            MessageInteraction(state=state, data=data["interaction"])
+            if "interaction" in data
+            else None
+        )
 
-        :param custom_id: custom_id of component to get from message components
-        :return: Optional[dict]
-
-        """
+    def get_component(self, custom_id: str) -> Optional[Component]:
         for row in self.components:
-            for component in row["components"]:
-                if "custom_id" in component and component["custom_id"] == custom_id:
+            for component in row.components:
+                if component.custom_id == custom_id:
                     return component
+
+    async def edit(
+        self,
+        content: Optional[str] = None,
+        embed: Optional[Embed] = None,
+        embeds: List[Embed] = None,
+        suppress: bool = None,
+        attachments: List[Attachment] = None,
+        allowed_mentions: Optional[AllowedMentions] = None,
+        components: List[Union[ActionRow, Component, List[Component]]] = None,
+    ):
+        state = self._state
+        data = {}
+
+        if content is not None:
+            data["content"] = content
+
+        if embed is not None and embeds is not None:
+            raise InvalidArgument("cannot pass both embed and embeds parameter to edit()")
+
+        if embed is not None:
+            data["embeds"] = [embed.to_dict()]
+
+        if embeds is not None:
+            data["embeds"] = [e.to_dict() for e in embeds]
+
+        if suppress is not None:
+            flags = MessageFlags._from_value(0)
+            flags.suppress_embeds = True
+            data["flags"] = flags.value
+
+        if allowed_mentions is None:
+            if state.allowed_mentions is not None and self.author.id == self._state.self_id:
+                data["allowed_mentions"] = state.allowed_mentions.to_dict()
+        elif state.allowed_mentions is not None:
+            data["allowed_mentions"] = state.allowed_mentions.merge(allowed_mentions).to_dict()
+        else:
+            data["allowed_mentions"] = allowed_mentions.to_dict()
+
+        if attachments is not None:
+            data["attachments"] = [a.to_dict() for a in attachments]
+
+        if components is not None:
+            data["components"] = _get_components_json(components)
+
+        if data:
+            await state.http.request(
+                Route(
+                    "PATCH",
+                    "/channels/{channel_id}/messages/{message_id}",
+                    channel_id=self.channel.id,
+                    message_id=self.id,
+                ),
+                json=data,
+            )
 
 
 def new_override(cls, *args, **kwargs):
-    if isinstance(cls, discord.Message):
+    if isinstance(cls, Message):
         return object.__new__(ComponentMessage)
     else:
         return object.__new__(cls)
 
 
-discord.message.Message.__new__ = new_override
+Message.__new__ = new_override
 
 
 def send_files(
@@ -229,7 +310,7 @@ async def send(
     channel = await self._get_channel()
     state = self._state
     content = str(content) if content is not None else None
-    components = components or []
+    components = _get_components_json(components) if components else []
     if embed is not None:
         embed = embed.to_dict()
 
@@ -308,7 +389,7 @@ async def send(
             message_reference=reference,
         )
 
-    ret = state.create_message(channel=channel, data=data)
+    ret = ComponentMessage(state=state, channel=channel, data=data)
     if delete_after is not None:
         await ret.delete(delay=delete_after)
     return ret
@@ -323,4 +404,16 @@ async def send_override(context_or_channel, *args, **kwargs):
     return await send(channel, *args, **kwargs)
 
 
+async def fetch_message(context_or_channel, id: int):
+    if isinstance(context_or_channel, commands.Context):
+        channel = context_or_channel.channel
+    else:
+        channel = context_or_channel
+
+    state = channel._state
+    data = await state.http.get_message(channel.id, id)
+    return ComponentMessage(state=state, channel=channel, data=data)
+
+
 abc.Messageable.send = send_override
+abc.Messageable.fetch_message = fetch_message

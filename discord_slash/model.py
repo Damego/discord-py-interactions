@@ -9,6 +9,7 @@ import discord
 from discord.ext.commands import BucketType, CommandOnCooldown, CooldownMapping
 
 from . import error, http
+from .component import _get_components_json
 from .dpy_overrides import ComponentMessage
 
 
@@ -529,7 +530,7 @@ class SlashMessage(ComponentMessage):
             if components is None:
                 _resp["components"] = []
             else:
-                _resp["components"] = components
+                _resp["components"] = _get_components_json(components)
 
         try:
             embeds = fields["embeds"]
@@ -685,6 +686,7 @@ class ComponentType(IntEnum):
     actionrow = 1
     button = 2
     select = 3
+    textinput = 4
 
 
 class ButtonStyle(IntEnum):
@@ -707,9 +709,25 @@ class ContextMenuType(IntEnum):
     USER = 2
     MESSAGE = 3
 
-    # @classmethod
-    # def from_type(cls, t: type):
-    #     if isinstance(t, discord.Member) or issubclass(t, discord.abc.User):
-    #         return cls.USER
-    #     if issubclass(t, discord.abc.Messageable):
-    #         return cls.MESSAGE
+
+class InteractionType(IntEnum):
+    PING = 1
+    APPLICATION_COMMAND = 2
+    MESSAGE_COMPONENT = 3
+    APPLICATION_COMMAND_AUTOCOMPLETE = 4
+    MODAL_SUBMIT = 5
+
+
+class InteractionCallbackType(IntEnum):
+    PONG = 1
+    CHANNEL_MESSAGE_WITH_SOURCE = 4
+    DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE = 5
+    DEFERRED_UPDATE_MESSAGE = 6
+    UPDATE_MESSAGE = 7
+    APPLICATION_COMMAND_AUTOCOMPLETE_RESULT = 8
+    MODAL = 9
+
+
+class InteractionEventType(IntEnum):
+    button_click = 2
+    select_option = 3

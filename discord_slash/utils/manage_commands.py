@@ -427,4 +427,3 @@ def generate_permissions(
         )
 
     return permissions
-
