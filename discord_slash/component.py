@@ -619,7 +619,7 @@ class Button(Component):
         if self.style == ButtonStyle.URL:
             raise InvalidArgument("Button style is set to URL. You shouldn't provide ID.")
 
-        self.custom_id = value
+        self._custom_id = value
 
     @disabled.setter
     def disabled(self, value: bool):
