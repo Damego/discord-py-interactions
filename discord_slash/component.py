@@ -178,7 +178,6 @@ class Modal(Component):
         self._components = components
 
     def to_dict(self) -> dict:
-        print({"components": [ActionRow(*self._components).to_dict()]})
         data = {
             "custom_id": self._custom_id,
             "title": self._title,

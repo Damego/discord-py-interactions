@@ -7,7 +7,7 @@ from discord.ext import commands
 from discord.utils import snowflake_time
 
 from . import error, http, model
-from .component import ActionRow, Button, Modal, Select, _get_components_json
+from .component import ActionRow, Component, Modal, _get_components_json
 from .dpy_overrides import ComponentMessage
 
 if TYPE_CHECKING:
@@ -167,7 +167,7 @@ class InteractionContext:
         allowed_mentions: discord.AllowedMentions = None,
         hidden: bool = False,
         delete_after: float = None,
-        components: Union[List[dict], List[Union[ActionRow, Button, Select]], Modal] = None,
+        components: List[Union[ActionRow, Component, List[Component]]] = None,
     ) -> model.SlashMessage:
         """
         Sends response of the interaction.
@@ -292,7 +292,7 @@ class InteractionContext:
         allowed_mentions: discord.AllowedMentions = None,
         hidden: bool = False,
         delete_after: float = None,
-        components: Union[List[dict], List[Union[ActionRow, Button, Select]], Modal] = None,
+        components: List[Union[ActionRow, Component, List[Component]]] = None,
     ) -> model.SlashMessage:
         """
         Sends response of the interaction. This is currently an alias of the ``.send()`` method.
@@ -645,7 +645,7 @@ class ComponentContext(InteractionContext):
         allowed_mentions: discord.AllowedMentions = None,
         hidden: bool = False,
         delete_after: float = None,
-        components: Union[List[dict], List[Union[ActionRow, Button, Select]], Modal] = None,
+        components: List[Union[ActionRow, Component, List[Component]]] = None,
     ) -> model.SlashMessage:
         if self.deferred and self._deferred_edit_origin:
             self._logger.warning(
@@ -682,11 +682,7 @@ class ComponentContext(InteractionContext):
             _resp["content"] = content
 
         try:
-            components = (
-                fields["components"]
-                if isinstance(fields["components"], dict)
-                else _get_components_json(fields["components"])
-            )
+            components = _get_components_json(fields["components"])
         except KeyError:
             pass
         else:
@@ -892,7 +888,7 @@ class MenuContext(InteractionContext):
         allowed_mentions: discord.AllowedMentions = None,
         hidden: bool = False,
         delete_after: float = None,
-        components: Union[List[dict], List[Union[ActionRow, Button, Select]], Modal] = None,
+        components: List[Union[ActionRow, Component, List[Component]]] = None,
     ) -> model.SlashMessage:
         if self.deferred and self._deferred_edit_origin:
             self._logger.warning(

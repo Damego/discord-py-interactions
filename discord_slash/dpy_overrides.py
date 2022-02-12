@@ -8,6 +8,7 @@ from discord import (
     InvalidArgument,
     Message,
     MessageFlags,
+    User,
     abc,
     http,
     utils,
@@ -18,12 +19,20 @@ from discord.http import Route
 from .component import ActionRow, Component, _get_component_type, _get_components_json
 
 
+class MessageInteraction:
+    def __init__(self, *, state, data) -> None:
+        self.type = data["type"]
+        self.name = data["name"]
+        self.id = data["id"]
+        self.author_id = int(data["user"]["id"])
+        self.author = User(data=data["user"], state=state)
+
+
 class ComponentMessage(Message):
-    __slots__ = tuple(list(Message.__slots__) + ["components"])
+    __slots__ = tuple(list(Message.__slots__) + ["components", "interaction"])
 
     def __init__(self, *, state, channel, data):
         super().__init__(state=state, channel=channel, data=data)
-        self.components = data["components"]
 
         components = []
         for i in data["components"]:
@@ -31,6 +40,11 @@ class ComponentMessage(Message):
             for j in i["components"]:
                 components[-1].append(_get_component_type(j["type"]).from_json(j))
         self.components: List[ActionRow] = components
+        self.interaction = (
+            MessageInteraction(state=state, data=data["interaction"])
+            if "interaciton" in data
+            else None
+        )
 
     def get_component(self, custom_id: str) -> Optional[Component]:
         for row in self.components:
@@ -390,4 +404,16 @@ async def send_override(context_or_channel, *args, **kwargs):
     return await send(channel, *args, **kwargs)
 
 
+async def fetch_message(context_or_channel, id: int):
+    if isinstance(context_or_channel, commands.Context):
+        channel = context_or_channel.channel
+    else:
+        channel = context_or_channel
+
+    state = channel._state
+    data = await state.http.get_message(channel.id, id)
+    return ComponentMessage(state=state, channel=channel, data=data)
+
+
 abc.Messageable.send = send_override
+abc.Messageable.fetch_message = fetch_message
