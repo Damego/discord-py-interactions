@@ -42,7 +42,7 @@ class ComponentMessage(Message):
         self.components: List[ActionRow] = components
         self.interaction = (
             MessageInteraction(state=state, data=data["interaction"])
-            if "interaciton" in data
+            if "interaction" in data
             else None
         )
 

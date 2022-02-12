@@ -5,6 +5,7 @@ from uuid import uuid1
 from discord import Emoji, InvalidArgument, PartialEmoji
 
 __all__ = (
+    "emoji_to_dict",
     "Component",
     "ButtonStyle",
     "Button",
@@ -18,16 +19,27 @@ __all__ = (
 )
 
 
-def _get_partial_emoji(emoji: Union[Emoji, PartialEmoji, str]) -> PartialEmoji:
+def emoji_to_dict(emoji: Union[Emoji, PartialEmoji, str]) -> dict:
+    """
+    Converts a default or custom emoji into a partial emoji dict.
+
+    :param emoji: The emoji to convert.
+    :type emoji: Union[discord.Emoji, discord.PartialEmoji, str]
+    """
     if isinstance(emoji, Emoji):
-        return PartialEmoji(name=emoji.name, animated=emoji.animated, id=emoji.id)
+        emoji = {"name": emoji.name, "id": emoji.id, "animated": emoji.animated}
     elif isinstance(emoji, PartialEmoji):
-        return emoji
+        emoji = emoji.to_dict()
     elif isinstance(emoji, str):
-        return PartialEmoji(name=emoji)
+        emoji = {"name": emoji, "id": None}
+    return emoji or {}
 
 
 class Component:
+    """
+    Base class for components.
+    """
+
     def to_dict(self) -> dict:
         raise NotImplementedError
 
@@ -42,6 +54,26 @@ class TextInputStyle(IntEnum):
 
 
 class TextInput(Component):
+    """
+    Creates a text input component for modal(form). Must be inside an ActionRow to be used (see :meth:`ActionRow`).
+
+    :param style: Style of the text input. Refer to :class:`TextInputStyle`.
+    :type style: Union[TextInputStyle, int]
+    :param custom_id: A custom identifier.
+    :type custom_id: str
+    :param label: The label of text input.
+    :type label: str
+    :param placeholer: Custom placeholder text if nothing is inputted.
+    :type placeholer: str
+    :param min_length: The minimum input length for a text input.
+    :type min_length: int
+    :param max_length: The maximum input length for a text input.
+    :type max_length: int
+    :param value: A pre-filled value.
+    :type value: str
+    :returns: :class:`TextInput`
+    """
+
     __slots__ = (
         "_type",
         "_style",
@@ -56,8 +88,8 @@ class TextInput(Component):
     def __init__(
         self,
         *,
-        custom_id: str = None,
         style: Union[TextInputStyle, int] = None,
+        custom_id: str = None,
         label: str = None,
         min_length: int = None,
         max_length: int = None,
@@ -168,6 +200,18 @@ class TextInput(Component):
 
 
 class Modal(Component):
+    """
+    Creates a popup modal(form).
+
+    :param custom_id: A custom identifier.
+    :type custom_id: str
+    :param title: The title of popup modal.
+    :type title: str
+    :param components: Between 1 and 5 (inclusive) components that make up the modal.
+    :type components: List[TextInput]
+    :returns: :class:`Modal`
+    """
+
     __slots__ = ("_custom_id", "_title", "_components")
 
     def __init__(
@@ -187,6 +231,22 @@ class Modal(Component):
 
 
 class SelectOption(Component):
+    """
+    Creates an option for Select components.
+
+    :param label: The user-facing name of the option that will be displayed in discord client.
+    :type label: str
+    :param value: The value that the bot will receive when this option is selected.
+    :type value: str
+    :param emoji: The emoji of the option.
+    :type emoji: Union[Emoji, PartialEmoji, str]
+    :param description: An additional description of the option.
+    :type description: str
+    :param default: Whether or not this is the default option.
+    :type default: bool
+    :returns: :class:`SelectOption`
+    """
+
     __slots__ = ("_label", "_value", "_emoji", "_description", "_default")
 
     def __init__(
@@ -204,7 +264,7 @@ class SelectOption(Component):
         self._default = default
 
         if emoji is not None:
-            self.emoji = _get_partial_emoji(emoji)
+            self.emoji = emoji_to_dict(emoji)
         else:
             self._emoji = None
 
@@ -252,7 +312,7 @@ class SelectOption(Component):
 
     @emoji.setter
     def emoji(self, emoji: Union[Emoji, PartialEmoji, str]):
-        self._emoji = _get_partial_emoji(emoji)
+        self._emoji = emoji_to_dict(emoji)
 
     @description.setter
     def description(self, value: str):
@@ -296,8 +356,26 @@ class SelectOption(Component):
 
 
 class Select(Component):
+    """
+    Creates a select (dropdown) component for use with the ``components`` field. Must be inside an ActionRow to be used (see :meth:`ActionRow`).
+
+    :param options: The choices the user can pick from.
+    :type options: List[SelectOption]
+    :param custom_id: A custom identifier, like buttons.
+    :type custom_id: str
+    :param placeholder: Custom placeholder text if nothing is selected.
+    :type placeholder: str
+    :param min_values: The minimum number of items that **must** be chosen.
+    :type min_values: int
+    :param max_values: The maximum number of items that **can** be chosen.
+    :type max_values: int
+    :param disabled: Disables this component. Defaults to ``False``.
+    :type disabled: bool
+    :returns: :class:`Select`
+    """
+
     __slots__ = (
-        "_id",
+        "_custom_id",
         "_options",
         "_placeholder",
         "_min_values",
@@ -309,7 +387,6 @@ class Select(Component):
         self,
         *,
         options: List[SelectOption],
-        id: str = None,
         custom_id: str = None,
         placeholder: str = None,
         min_values: int = 1,
@@ -319,7 +396,7 @@ class Select(Component):
         if (not len(options)) or (len(options) > 25):
             raise InvalidArgument("Options length should be between 1 and 25.")
 
-        self._id = id or custom_id or str(uuid1())
+        self._custom_id = custom_id or str(uuid1())
         self._options = options
         self._placeholder = placeholder
         self._min_values = min_values
@@ -330,7 +407,7 @@ class Select(Component):
         return {
             "type": 3,
             "options": list(map(lambda option: option.to_dict(), self.options)),
-            "custom_id": self.id,
+            "custom_id": self.custom_id,
             "placeholder": self.placeholder,
             "min_values": self.min_values,
             "max_values": self.max_values,
@@ -338,12 +415,8 @@ class Select(Component):
         }
 
     @property
-    def id(self) -> str:
-        return self._id
-
-    @property
     def custom_id(self) -> str:
-        return self._id
+        return self._custom_id
 
     @property
     def options(self) -> List[SelectOption]:
@@ -365,13 +438,9 @@ class Select(Component):
     def disabled(self) -> bool:
         return self._disabled
 
-    @id.setter
-    def id(self, value: str):
-        self._id = value
-
     @custom_id.setter
     def custom_id(self, value: str):
-        self._id = value
+        self.custom_id = value
 
     @options.setter
     def options(self, value: List[SelectOption]):
@@ -395,9 +464,6 @@ class Select(Component):
     @disabled.setter
     def disabled(self, value: bool):
         self._disabled = value
-
-    def set_id(self, value: str):
-        self.id = value
 
     def set_custom_id(self, value: str):
         self.custom_id = value
@@ -439,6 +505,27 @@ class ButtonStyle(IntEnum):
 
 
 class Button(Component):
+    """
+    Creates a button component for use with the ``components`` field. Must be used within an ``ActionRow`` to be used (see :meth:`ActionRow`).
+
+    .. note::
+        At least a label or emoji is required for a button. You can have both, but not neither of them.
+
+    :param style: Style of the button. Refer to :class:`ButtonStyle`.
+    :type style: Union[ButtonStyle, int]
+    :param label: The label of the button.
+    :type label: Optional[str]
+    :param emoji: The emoji of the button.
+    :type emoji: Union[discord.Emoji, discord.PartialEmoji, dict]
+    :param custom_id: The custom_id of the button. Needed for non-link buttons.
+    :type custom_id: Optional[str]
+    :param url: The URL of the button. Needed for link buttons.
+    :type url: Optional[str]
+    :param disabled: Whether the button is disabled or not. Defaults to `False`.
+    :type disabled: bool
+    :returns: :class:`Button`
+    """
+
     __slots__ = ("_style", "_label", "_id", "_url", "_disabled", "_emoji")
 
     def __init__(
@@ -446,7 +533,6 @@ class Button(Component):
         *,
         label: str = None,
         style: int = ButtonStyle.gray,
-        id: str = None,
         custom_id: str = None,
         url: str = None,
         disabled: bool = False,
@@ -459,21 +545,21 @@ class Button(Component):
         self._disabled = disabled
 
         if emoji is not None:
-            self._emoji = _get_partial_emoji(emoji)
+            self._emoji = emoji_to_dict(emoji)
         else:
             self._emoji = None
 
         if not self.style == ButtonStyle.URL:
-            self._id = id or custom_id or str(uuid1())
+            self.custom_id = custom_id or str(uuid1())
         else:
-            self._id = None
+            self.custom_id = None
 
     def to_dict(self) -> dict:
         data = {
             "type": 2,
             "style": self.style,
             "label": self.label,
-            "custom_id": self.id,
+            "custom_id": self.custom_id,
             "url": self.url if self.style == ButtonStyle.URL else None,
             "disabled": self.disabled,
         }
@@ -490,12 +576,8 @@ class Button(Component):
         return self._label
 
     @property
-    def id(self) -> str:
-        return self._id
-
-    @property
     def custom_id(self) -> str:
-        return self._id
+        return self._custom_id
 
     @property
     def url(self) -> Optional[str]:
@@ -511,7 +593,7 @@ class Button(Component):
 
     @style.setter
     def style(self, value: int):
-        if value == ButtonStyle.URL and self.id:
+        if value == ButtonStyle.URL and self.custom_id:
             raise InvalidArgument("Both ID and URL are set.")
         if not (1 <= value <= ButtonStyle.URL):
             raise InvalidArgument(f"Style must be between 1, {ButtonStyle.URL}.")
@@ -532,19 +614,12 @@ class Button(Component):
 
         self._url = value
 
-    @id.setter
-    def id(self, value: str):
-        if self.style == ButtonStyle.URL:
-            raise InvalidArgument("Button style is set to URL. You shouldn't provide ID.")
-
-        self._id = value
-
     @custom_id.setter
     def custom_id(self, value: str):
         if self.style == ButtonStyle.URL:
             raise InvalidArgument("Button style is set to URL. You shouldn't provide ID.")
 
-        self._id = value
+        self.custom_id = value
 
     @disabled.setter
     def disabled(self, value: bool):
@@ -552,7 +627,7 @@ class Button(Component):
 
     @emoji.setter
     def emoji(self, emoji: Union[Emoji, PartialEmoji, str]):
-        self._emoji = _get_partial_emoji(emoji)
+        self._emoji = emoji_to_dict(emoji)
 
     def set_style(self, value: int):
         self.style = value
@@ -562,9 +637,6 @@ class Button(Component):
 
     def set_url(self, value: int):
         self.url = value
-
-    def set_id(self, value: str):
-        self.id = value
 
     def set_custom_id(self, value: str):
         self.custom_id = value
@@ -595,6 +667,13 @@ class Button(Component):
 
 
 class ActionRow(Component):
+    """
+    ActionRow for message components.
+
+    :param components: Components to go within the ActionRow.
+    :returns: :class:`ActionRow`
+    """
+
     __slots__ = ("_components",)
 
     def __init__(self, *args: List[Component]):
