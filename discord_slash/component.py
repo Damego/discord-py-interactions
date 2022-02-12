@@ -653,7 +653,7 @@ class Button(Component):
         return cls(
             style=data.get("style"),
             label=data.get("label"),
-            id=data.get("custom_id"),
+            custom_id=data.get("custom_id"),
             url=data.get("url"),
             disabled=data.get("disabled", False),
             emoji=PartialEmoji(
