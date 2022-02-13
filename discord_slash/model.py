@@ -461,6 +461,7 @@ class SlashCommandOptionType(IntEnum):
     ROLE = 8
     MENTIONABLE = 9
     FLOAT = 10
+    ATTACHMENT = 11
 
     @classmethod
     def from_type(cls, t: type):

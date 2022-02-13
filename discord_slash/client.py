@@ -5,7 +5,7 @@ import typing
 from contextlib import suppress
 from inspect import getdoc, iscoroutinefunction
 
-from discord import Client, Forbidden, Guild, HTTPException, Message, NotFound
+from discord import Attachment, Client, Forbidden, Guild, HTTPException, Message, NotFound
 from discord.ext.commands import AutoShardedBot, Bot, Cog
 
 from .context import AutoCompleteContext, ComponentContext, MenuContext, ModalContext, SlashContext
@@ -1266,9 +1266,10 @@ class SlashCommand:
         options: list,
         connector: dict,
         temporary_auto_convert: dict = None,
+        data: dict = None,
     ) -> dict:
         """
-        Processes Role, User, and Channel option types to discord.py's models.
+        Processes Role, User, Channel and Attachment option types to discord.py's models.
 
         :param guild: Guild of the command message.
         :type guild: discord.Guild
@@ -1276,6 +1277,7 @@ class SlashCommand:
         :type options: list
         :param connector: Kwarg connector.
         :param temporary_auto_convert: Temporary parameter, use this if options doesn't have ``type`` keyword.
+        :param data: A data from gateway message.
         :return: Union[list, dict]
         """
 
@@ -1289,6 +1291,7 @@ class SlashCommand:
             [guild.get_member, guild.fetch_member],
             guild.get_channel,
             guild.get_role,
+            "Attachment",
         ]
 
         types = {
@@ -1307,6 +1310,11 @@ class SlashCommand:
             SlashCommandOptionType.ROLE: 2,
             8: 2,
             "8": 2,
+            "attachment": 3,
+            "ATTACHMENT": 3,
+            SlashCommandOptionType.ATTACHMENT: 3,
+            11: 3,
+            "11": 3,
         }
 
         to_return = {}
@@ -1329,6 +1337,12 @@ class SlashCommand:
                         processed = cache_first
                     else:
                         loaded_converter = loaded_converter[1]
+                elif isinstance(
+                    loaded_converter, str
+                ):  # isinstance(loaded_converter, Attachment) is False
+                    processed = Attachment(
+                        data=data["resolved"]["attachments"][x["value"]], state=guild._state
+                    )
                 if not processed:
                     try:
                         processed = (
@@ -1475,7 +1489,6 @@ class SlashCommand:
 
     async def _on_slash(self, to_use):  # slash commands only.
         if to_use["data"]["name"] in self.commands:
-
             ctx = SlashContext(self.req, to_use, self._discord, self.logger)
             cmd_name = to_use["data"]["name"]
 
@@ -1516,6 +1529,7 @@ class SlashCommand:
                     to_use["data"]["options"],
                     selected_cmd.connector,
                     temporary_auto_convert,
+                    to_use["data"],
                 )
                 if "options" in to_use["data"]
                 else {}
@@ -1627,7 +1641,11 @@ class SlashCommand:
 
                 args = (
                     await self.process_options(
-                        ctx.guild, x["options"], selected.connector, temporary_auto_convert
+                        ctx.guild,
+                        x["options"],
+                        selected.connector,
+                        temporary_auto_convert,
+                        data["data"],
                     )
                     if "options" in x
                     else {}
@@ -1645,7 +1663,7 @@ class SlashCommand:
 
         args = (
             await self.process_options(
-                ctx.guild, sub_opts, selected.connector, temporary_auto_convert
+                ctx.guild, sub_opts, selected.connector, temporary_auto_convert, data["data"]
             )
             if "options" in sub
             else {}
