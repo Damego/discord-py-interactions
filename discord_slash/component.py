@@ -274,9 +274,8 @@ class SelectOption(Component):
             "value": self.value,
             "description": self.description,
             "default": self.default,
+            "emoji": self.emoji,
         }
-        if self.emoji is not None:
-            data["emoji"] = self.emoji.to_dict()
         return data
 
     @property
@@ -562,9 +561,8 @@ class Button(Component):
             "custom_id": self.custom_id,
             "url": self.url if self.style == ButtonStyle.URL else None,
             "disabled": self.disabled,
+            "emoji": self.emoji,
         }
-        if self.emoji:
-            data["emoji"] = self.emoji.to_dict()
         return data
 
     @property
