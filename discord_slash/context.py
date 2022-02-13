@@ -544,10 +544,13 @@ class ModalContext(InteractionContext):
     ):
         super().__init__(_http=_http, _json=_json, _discord=_discord, logger=logger)
         self.origin_message = None
-        if message_data := _json.get("message"):
-            self.origin_message = ComponentMessage(
-                state=self.bot._connection, channel=self.channel, data=message_data
+        self.origin_message = (
+            ComponentMessage(
+                state=self.bot._connection, channel=self.channel, data=_json["message"]
             )
+            if "message" in _json
+            else None
+        )
         self.custom_id = _json["data"]["custom_id"]
         self.components = [
             ActionRow.from_json(component) for component in _json["data"]["components"]
