@@ -136,6 +136,7 @@ What about Modals / Forms?
 __________________________
 
 And we support those too.
+
 .. code-block:: python
 
     from discord_slash.component import Modal, TextInput, TextInputStyle
