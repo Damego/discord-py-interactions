@@ -15,11 +15,10 @@ First we need to create some buttons, lets put them in a list for now. We'll use
 
 .. code-block:: python
 
-    from discord_slash.utils.manage_components import create_button, create_actionrow
-    from discord_slash.model import ButtonStyle
+    from discord_slash.component import Button, ButtonStyle
 
     buttons = [
-                create_button(
+                Button(
                     style=ButtonStyle.green,
                     label="A Green Button"
                 ),
@@ -29,7 +28,8 @@ So we have a button, but where do we use it. Let's create an action row with :fu
 
 .. code-block:: python
 
-    action_row = create_actionrow(*buttons)
+    action_row = ActionRow(*buttons)
+    # or buttons is already list and we can call this list as ActionRow
 
 
 Fantastic, we now have an action row with a green button in it, now lets get it sent in discord
@@ -37,19 +37,9 @@ Fantastic, we now have an action row with a green button in it, now lets get it 
 .. code-block:: python
 
     await ctx.send("My Message", components=[action_row])
+    # or
+    await ctx.send("My Message", components=[buttons])
 
-
-And to bring it all together, you could use this:
-
-.. code-block:: python
-
-    from discord_slash.utils.manage_components import create_button, create_actionrow
-    from discord_slash.model import ButtonStyle
-
-    await ctx.send("My Message", components=[
-                                        create_actionrow(
-                                            create_button(style=ButtonStyle.green, label="A Green Button"))
-                                        ])
 
 Now if you've followed along, you have a green button in discord! But theres a problem, whenever you click it you see that the ``interaction failed``. Why is that?
 Well, in Discord, clicking buttons and using slash commands are called ``interactions``, and Discord doesn't know if we've received them or not unless we tell Discord. So how do we do that?
@@ -62,16 +52,15 @@ When responding, you have 3 choices in how you handle interactions. You can eith
 Wait_for
 ********
 
-Lets go through the most common method first, responding in the command itself. We simply need to :func:`wait_for` the event, just like you do for reactions. For this we're going to use :func:`wait_for_component() <discord_slash.utils.manage_components>`, and we're going to only wait for events from the action row we just sent.
+Lets go through the most common method first, responding in the command itself. We simply need to `wait_for` the event, just like you do for reactions. For this we're going to use `Bot.wait_for()`, and we're going to only wait for events from the action row we just sent.
+You can wait for button clicks, select options or both.
 This method will return a :class:`ComponentContext <discord_slash.context.ComponentContext>` object that we can use to respond. For this example, we'll just edit the original message (:meth:`edit_origin() <discord_slash.context.ComponentContext.edit_origin>`, uses same logic as :func:`edit()`)
 
 .. code-block:: python
 
-    from discord_slash.utils.manage_components import wait_for_component
-
     await ctx.send("My Message", components=[action_row])
     # note: this will only catch one button press, if you want more, put this in a loop
-    button_ctx: ComponentContext = await wait_for_component(bot, components=action_row)
+    button_ctx: ComponentContext = await bot.wait_for("button_click") # `select_option` for select, `component` for both
     await button_ctx.edit_origin(content="You pressed a button!")
 
 .. note:: It's worth being aware that if you handle the event in the command itself, it will not persist reboots. As such when you restart the bot, the interaction will fail
@@ -121,24 +110,52 @@ Yep we support those too. You use them much the same as buttons. You can only ha
 
 .. code-block:: python
 
-    from discord_slash.utils.manage_components import create_select, create_select_option, create_actionrow
+    from discord_slash.component import Select, SelectOption
 
-    select = create_select(
+    select = Select(
         options=[# the options in your dropdown
-            create_select_option("Lab Coat", value="coat", emoji="🥼"),
-            create_select_option("Test Tube", value="tube", emoji="🧪"),
-            create_select_option("Petri Dish", value="dish", emoji="🧫"),
+            SelectOption(label="Lab Coat", value="coat", emoji="🥼"),
+            SelectOption(label="Test Tube", value="tube", emoji="🧪"),
+            SelectOption(label="Petri Dish", value="dish", emoji="🧫"),
         ],
         placeholder="Choose your option",  # the placeholder text to show when no options have been chosen
         min_values=1,  # the minimum number of options a user must select
         max_values=2,  # the maximum number of options a user can select
     )
 
-    await ctx.send("test", components=[create_actionrow(select)])  # like action row with buttons but without * in front of the variable
+    await ctx.send("test", components=[select])
 
     @bot.event
     async def on_component(ctx: ComponentContext):
         # ctx.selected_options is a list of all the values the user selected
         await ctx.send(content=f"You selected {ctx.selected_options}")
 
-Additionally, you can pass ``description`` as a keyword-argument for ``create_select_option()`` if you so wish.
+Additionally, you can pass ``description`` as a keyword-argument for ``SelectOption()`` if you so wish.
+
+What about Modals / Forms?
+__________________________
+
+And we support those too.
+.. code-block:: python
+
+    from discord_slash.component import Modal, TextInput, TextInputStyle
+
+    modal = Modal(
+        title="The title of popup modal",
+        custom_id="modal1",
+        components=[
+          TextInput(
+            style=TextInputStyle.SHORT,
+            custom_id="textinput1",
+            label="label 1",
+            placeholder="Something interesting..."
+          )
+        ]
+    )
+
+    await ctx.popup(modal)
+
+    @bot.event
+    async def on_modal(ctx: ModalContext):
+        # ctx.values is a dict of all the values the user entered and looks like {"CUSTOM_ID": "VALUE"}
+        await ctx.send(content=f"You entered {ctx.values}")
