@@ -52,6 +52,11 @@ class ComponentMessage(Message):
                 if component.custom_id == custom_id:
                     return component
 
+    async def disable_components(self) -> None:
+        await self.edit(
+            components=[row.disable_components() for row in self.components],
+        )
+
     async def edit(
         self,
         content: Optional[str] = None,
