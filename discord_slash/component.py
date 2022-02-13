@@ -526,7 +526,7 @@ class Button(Component):
     :returns: :class:`Button`
     """
 
-    __slots__ = ("_style", "_label", "_id", "_url", "_disabled", "_emoji")
+    __slots__ = ("_style", "_label", "_custom_id", "_url", "_disabled", "_emoji")
 
     def __init__(
         self,
