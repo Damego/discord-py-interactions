@@ -23,6 +23,9 @@
 </p>
 
 # About
+## What happend with original library?
+Original library has become a separate wrapper for discord API and got version 4. Its not more extension for `discord.py`
+But there are people who want to continue using v3 with `discord.py`
 ## What is discord-py-interactions?
 `discord-py-interactions` is, in the simplest terms, a library extension that builds off of the currently existing
 discord.py API wrapper. While we do use our own basic class code for our own library, a large majority of
@@ -40,8 +43,7 @@ At this time, we are able to provide you an non-exhaustive list (because Discord
 creating more interactions at this time) of all components integrated as interactions:
 
 * Slash Commands
-* Buttons
-* Selects (also known as *dropdowns* or *menus*)
+* Buttons, Selects, Modals
 
 # Installation
 We recommend using pip in order to install our library. You are able to do this by typing the following line below:
@@ -108,45 +110,42 @@ This basic example shows how to easily integrate buttons into your commands. But
 slash commands and may be used in regular discord.py commands as well.
 
 ```py
-from discord_slash.utils.manage_components import create_button, create_actionrow
-from discord_slash.model import ButtonStyle
+from discord_slash.component import Button, ButtonStyle
 
 buttons = [
-    create_button(style=ButtonStyle.green, label="A green button"),
-    create_button(style=ButtonStyle.blue, label="A blue button")
+    Button(style=ButtonStyle.green, label="A green button"),
+    Button(style=ButtonStyle.blue, label="A blue button")
 ]
-action_row = create_actionrow(*buttons)
 
-await ctx.send(components=[action_row])
+await ctx.send(components=[buttons])
 ```
 
 ### Advanced
-For more advanced use, please refer to our official documentation on [buttons here.](https://discord-interactions.readthedocs.io/en/latest/components.html#responding-to-interactions)
+For more advanced use, please refer to our official documentation on [buttons here.](https://discord-py-interactions.readthedocs.io/en/latest/components.html#responding-to-interactions)
 
 ## Selects
 This basic example shows how to add selects into our bot. Selects offer the same accessibility as buttons do
 in premise of limitations.
 
 ```py
-from discord_slash.utils.manage_components import create_select, create_select_option, create_actionrow
+from discord_slash.component import Select, SelectOption
 
-select = create_select(
+select = Select(
     options=[
-        create_select_option("Lab Coat", value="coat", emoji="🥼"),
-        create_select_option("Test Tube", value="tube", emoji="🧪"),
-        create_select_option("Petri Dish", value="dish", emoji="🧫")
+        SelectOption(label="Lab Coat", value="coat", emoji="🥼"),
+        SelectOption(label="Test Tube", value="tube", emoji="🧪"),
+        SelectOption(label="Petri Dish", value="dish", emoji="🧫")
     ],
     placeholder="Choose your option",
     min_values=1, # the minimum number of options a user must select
     max_values=2 # the maximum number of options a user can select
 )
-action_row = create_actionrow(select)
 
 await ctx.send(components=[action_row])
 ```
 
 ### Advanced
-For more advanced use, please refer to our official documentation on [selects here.](https://discord-interactions.readthedocs.io/en/latest/components.html#what-about-selects-dropdowns)
+For more advanced use, please refer to our official documentation on [selects here.](https://discord-py-interactions.readthedocs.io/en/latest/components.html#what-about-selects-dropdowns)
 
 ## Context Menus
 This basic example shows how to add a message context menu.
@@ -166,7 +165,7 @@ async def commandname(ctx: MenuContext):
 ```
 
 ### Advanced
-For more advanced use, please refer to our official documentation on [context menus here.](https://discord-interactions.readthedocs.io/en/latest/gettingstarted.html#adding-context-menus)
+For more advanced use, please refer to our official documentation on [context menus here.](https://discord-py-interactions.readthedocs.io/en/latest/gettingstarted.html#adding-context-menus)
 
 --------
 
