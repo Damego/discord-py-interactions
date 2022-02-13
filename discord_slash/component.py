@@ -486,7 +486,7 @@ class Select(Component):
     @classmethod
     def from_json(cls, data: dict):
         return cls(
-            id=data.get("custom_id"),
+            custom_id=data.get("custom_id"),
             options=list(map(lambda x: SelectOption.from_json(x), data.get("options"))),
             placeholder=data.get("placeholder"),
             min_values=data.get("min_values"),
