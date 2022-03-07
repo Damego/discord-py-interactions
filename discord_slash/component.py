@@ -727,6 +727,9 @@ class ActionRow(Component):
     def add_component(self, value: Component):
         self.components.append(value)
 
+    def remove_component(self, value: Component):
+        self.components.remove(value)
+
     @classmethod
     def from_json(cls, data: dict):
         components = data.get("components")
