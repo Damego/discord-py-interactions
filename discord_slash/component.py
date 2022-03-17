@@ -549,9 +549,9 @@ class Button(Component):
             self._emoji = None
 
         if not self.style == ButtonStyle.URL:
-            self.custom_id = custom_id or str(uuid1())
+            self._custom_id = custom_id or str(uuid1())
         else:
-            self.custom_id = None
+            self._custom_id = None
 
     def to_dict(self) -> dict:
         data = {
