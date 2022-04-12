@@ -830,6 +830,15 @@ class MenuContext(InteractionContext):
                 pass
 
     @property
+    def slash(self) -> "client.SlashCommand":
+        """
+        Returns the associated SlashCommand object created during Runtime.
+
+        :return: client.SlashCommand
+        """
+        return self.bot.slash  # noqa
+
+    @property
     def cog(self) -> Optional[commands.Cog]:
         """
         Returns the cog associated with the command invoked, if any.
