@@ -49,6 +49,7 @@ creating more interactions at this time) of all components integrated as interac
 We recommend using pip in order to install our library. You are able to do this by typing the following line below:
 
 `pip uninstall discord-py-interactions`
+
 `pip install git+https://github.com/Damego/discord-py-interactions.git`
 
 # Examples
