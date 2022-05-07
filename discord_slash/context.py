@@ -510,8 +510,6 @@ class AutoCompleteContext(InteractionContext):
 
         :param choices:
         """
-        if not choices:
-            raise error.IncorrectFormat("Should at least 1 choice")
         if isinstance(choices, dict):
             choices = [choices]
 
