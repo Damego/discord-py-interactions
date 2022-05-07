@@ -25,5 +25,5 @@ from .context import (  # noqa: F401
     SlashContext,
 )
 from .dpy_overrides import ComponentMessage  # noqa: F401
-from .model import ComponentType, ContextMenuType, SlashCommandOptionType  # noqa: F401
+from .model import ComponentType, ContextMenuType, Permissions, SlashCommandOptionType  # noqa: F401
 from .utils import manage_commands, manage_components  # noqa: F401
