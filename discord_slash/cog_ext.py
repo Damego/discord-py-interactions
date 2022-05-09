@@ -205,7 +205,14 @@ def cog_subcommand(
 # I don't feel comfortable with having these right now, they're too buggy even when they were working.
 
 
-def cog_context_menu(*, name: str, guild_ids: list = None, target: int = 1):
+def cog_context_menu(
+    *,
+    name: str,
+    guild_ids: list = None,
+    target: int = 1,
+    default_member_permissions: Permissions = None,
+    dm_permission: bool = True,
+):
     """
     Decorator that adds context menu commands.
 
@@ -225,8 +232,8 @@ def cog_context_menu(*, name: str, guild_ids: list = None, target: int = 1):
             )
 
         _cmd = {
-            "default_member_permissions": None,
-            "dm_permission": True,
+            "default_member_permissions": default_member_permissions,
+            "dm_permission": dm_permission,
             "has_permissions": None,
             "name": name,
             "type": target,

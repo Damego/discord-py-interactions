@@ -678,7 +678,15 @@ class SlashCommand:
         :type _type: int
         """
 
-    def add_context_menu(self, cmd, name: str, _type: int, guild_ids: list = None):
+    def add_context_menu(
+        self,
+        cmd,
+        name: str,
+        _type: int,
+        guild_ids: typing.List[int] = None,
+        default_member_permissions: Permissions = None,
+        dm_permission: bool = True,
+    ):
         """
         Creates a new context menu command.
 
@@ -688,6 +696,12 @@ class SlashCommand:
         :type name: str
         :param _type: The context menu type.
         :type _type: int
+        :param guild_ids: List of guild ID of where the command will be used. Default ``None``, which will be global command.
+        :type guild_ids: List[int]
+        :param default_member_permissions: Sets if users have permission to run slash command in the guild, when no permissions are set.
+        :type default_member_permissions: Permissions
+        :param dm_permission: Sets if users have permission to run slash command in dm
+        :type dm_permission: bool
         """
 
         name = [name or cmd.__name__][0]
@@ -708,8 +722,8 @@ class SlashCommand:
                     guild_ids.append(x)
 
         _cmd = {
-            "default_member_permissions": None,
-            "dm_permission": True,
+            "default_member_permissions": default_member_permissions,
+            "dm_permission": dm_permission,
             "has_permissions": None,
             "name": name,
             "type": _type,
@@ -1061,7 +1075,15 @@ class SlashCommand:
 
         return wrapper
 
-    def context_menu(self, *, target: int, name: str, guild_ids: list = None):
+    def context_menu(
+        self,
+        *,
+        target: int,
+        name: str,
+        guild_ids: typing.List[int] = None,
+        default_member_permissions: Permissions = None,
+        dm_permission: bool = True,
+    ):
         """
         Decorator that adds context menu commands.
 
@@ -1069,23 +1091,18 @@ class SlashCommand:
         :type target: int
         :param name: A name to register as the command in the menu.
         :type name: str
-        :param guild_ids: A list of guild IDs to register the command under. Defaults to ``None``.
-        :type guild_ids: list
+        :param guild_ids: List of guild ID of where the command will be used. Default ``None``, which will be global command.
+        :type guild_ids: List[int]
+        :param default_member_permissions: Sets if users have permission to run slash command in the guild, when no permissions are set.
+        :type default_member_permissions: Permissions
+        :param dm_permission: Sets if users have permission to run slash command in dm
+        :type dm_permission: bool
         """
 
         def wrapper(cmd):
-            # _obj = self.add_slash_command(
-            #    cmd,
-            #    name,
-            #    "",
-            #    guild_ids
-            # )
-
-            # This has to call both, as its a arg-less menu.
-
-            obj = self.add_context_menu(cmd, name, target, guild_ids)
-
-            return obj
+            return self.add_context_menu(
+                cmd, name, target, guild_ids, default_member_permissions, dm_permission
+            )
 
         return wrapper
 
