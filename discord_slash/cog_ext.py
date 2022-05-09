@@ -4,7 +4,12 @@ import typing
 import discord
 
 from .error import IncorrectFormat, IncorrectGuildIDType
-from .model import CogBaseCommandObject, CogComponentCallbackObject, CogSubcommandObject
+from .model import (
+    CogBaseCommandObject,
+    CogComponentCallbackObject,
+    CogSubcommandObject,
+    Permissions,
+)
 from .utils import manage_commands
 from .utils.manage_components import get_components_ids, get_messages_ids
 
@@ -15,7 +20,8 @@ def cog_slash(
     description: str = None,
     guild_ids: typing.List[int] = None,
     options: typing.List[dict] = None,
-    default_permission: bool = True,
+    default_member_permissions: Permissions = None,
+    dm_permission: bool = True,
     permissions: typing.Dict[int, list] = None,
     connector: dict = None,
 ):
@@ -43,8 +49,10 @@ def cog_slash(
     :type guild_ids: List[int]
     :param options: Options of the slash command. This will affect ``auto_convert`` and command data at Discord API. Default ``None``.
     :type options: List[dict]
-    :param default_permission: Sets if users have permission to run slash command by default, when no permissions are set. Default ``True``.
-    :type default_permission: bool
+    :param default_member_permissions: Sets if users have permission to run slash command in the guild, when no permissions are set.
+    :type default_member_permissions: Permissions
+    :param dm_permission: Sets if users have permission to run slash command in dm
+    :type dm_permission: bool
     :param permissions: Dictionary of permissions of the slash command. Key being target guild_id and value being a list of permissions to apply. Default ``None``.
     :type permissions: dict
     :param connector: Kwargs connector for the command. Default ``None``.
@@ -74,7 +82,8 @@ def cog_slash(
             "description": desc,
             "guild_ids": guild_ids,
             "api_options": opts,
-            "default_permission": default_permission,
+            "default_member_permissions": default_member_permissions,
+            "dm_permission": dm_permission,
             "api_permissions": permissions,
             "connector": connector,
             "has_subcommands": False,
@@ -92,7 +101,8 @@ def cog_subcommand(
     description: str = None,
     base_description: str = None,
     base_desc: str = None,
-    base_default_permission: bool = True,
+    base_default_member_permissions: Permissions = None,
+    base_dm_permission: bool = True,
     base_permissions: typing.Dict[int, list] = None,
     subcommand_group_description: str = None,
     sub_group_desc: str = None,
@@ -127,8 +137,10 @@ def cog_subcommand(
     :param base_description: Description of the base command. Default ``None``.
     :type base_description: str
     :param base_desc: Alias of ``base_description``.
-    :param base_default_permission: Sets if users have permission to run slash command by default, when no permissions are set. Default ``True``.
-    :type base_default_permission: bool
+    :param default_member_permissions: Sets if users have permission to run slash command in the guild, when no permissions are set.
+    :type default_member_permissions: Permissions
+    :param dm_permission: Sets if users have permission to run slash command in dm
+    :type dm_permission: bool
     :param base_permissions: Dictionary of permissions of the slash command. Key being target guild_id and value being a list of permissions to apply. Default ``None``.
     :type base_permissions: dict
     :param subcommand_group_description: Description of the subcommand_group. Default ``None``.
@@ -168,7 +180,8 @@ def cog_subcommand(
             "description": base_description,
             "guild_ids": guild_ids.copy(),
             "api_options": [],
-            "default_permission": base_default_permission,
+            "default_member_permissions": base_default_member_permissions,
+            "dm_permission": base_dm_permission,
             "api_permissions": base_permissions,
             "connector": {},
             "has_subcommands": True,
@@ -212,7 +225,8 @@ def cog_context_menu(*, name: str, guild_ids: list = None, target: int = 1):
             )
 
         _cmd = {
-            "default_permission": None,
+            "default_member_permissions": None,
+            "dm_permission": True,
             "has_permissions": None,
             "name": name,
             "type": target,

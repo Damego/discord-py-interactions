@@ -27,6 +27,7 @@ from .model import (
     GuildPermissionsData,
     InteractionEventType,
     InteractionType,
+    Permissions,
     SlashCommandOptionType,
     SubcommandObject,
 )
@@ -183,8 +184,7 @@ class SlashCommand:
                         if i not in base_command.allowed_guild_ids:
                             base_command.allowed_guild_ids.append(i)
 
-                    base_permissions = x.base_command_data["api_permissions"]
-                    if base_permissions:
+                    if base_permissions := x.base_command_data["api_permissions"]:
                         for applicable_guild in base_permissions:
                             if applicable_guild not in base_command.permissions:
                                 base_command.permissions[applicable_guild] = []
@@ -204,9 +204,9 @@ class SlashCommand:
                     if x.name in self.subcommands[x.base][x.subcommand_group]:
                         raise DuplicateCommand(f"{x.base} {x.subcommand_group} {x.name}")
                     self.subcommands[x.base][x.subcommand_group][x.name] = x
+                elif x.name in self.subcommands[x.base]:
+                    raise DuplicateCommand(f"{x.base} {x.name}")
                 else:
-                    if x.name in self.subcommands[x.base]:
-                        raise DuplicateCommand(f"{x.base} {x.name}")
                     self.subcommands[x.base][x.name] = x
 
     def _get_cog_component_callbacks(self, cog, func_list):
@@ -283,8 +283,8 @@ class SlashCommand:
         """
         await self._discord.wait_until_ready()  # In case commands are still not registered to SlashCommand.
         all_guild_ids = []
-        for x in self.commands:
-            if x == "context":
+        for command_name in self.commands:
+            if command_name == "context":
                 # handle context menu separately.
                 for _x in self.commands["context"]:
                     _selected = self.commands["context"][_x]
@@ -292,138 +292,144 @@ class SlashCommand:
                         if i not in all_guild_ids:
                             all_guild_ids.append(i)
                 continue
-            for i in self.commands[x].allowed_guild_ids:
-                if i not in all_guild_ids:
-                    all_guild_ids.append(i)
-        cmds = {"global": [], "guild": {x: [] for x in all_guild_ids}}
+            for guild_id in self.commands[command_name].allowed_guild_ids:
+                if guild_id not in all_guild_ids:
+                    all_guild_ids.append(guild_id)
+        cmds = {"global": [], "guild": {guild_id: [] for guild_id in all_guild_ids}}
         wait = {}  # Before merging to return dict, let's first put commands to temporary dict.
-        for x in self.commands:
-            if x == "context":
+        for command_name in self.commands:
+            if command_name == "context":
                 # handle context menu separately.
-                for _x in self.commands["context"]:  # x is the new reference dict
-                    selected = self.commands["context"][_x]
+                for context_command_name in self.commands["context"]:  # x is the new reference dict
+                    command_data = self.commands["context"][context_command_name]
 
-                    if selected.allowed_guild_ids:
-                        for y in selected.allowed_guild_ids:
-                            if y not in wait:
-                                wait[y] = {}
-                            command_dict = {
-                                "name": _x,
-                                "options": selected.options or [],
-                                "default_permission": selected.default_permission,
-                                "permissions": {},
-                                "type": selected._type,
-                            }
-                            if y in selected.permissions:
-                                command_dict["permissions"][y] = selected.permissions[y]
-                            wait[y][_x] = copy.deepcopy(command_dict)
+                    if command_data.allowed_guild_ids:
+                        for guild_id in command_data.allowed_guild_ids:
+                            if guild_id not in wait:
+                                wait[guild_id] = {}
+                            command_dict = self.__get_dict_command_data(
+                                command_name, command_data, False
+                            )
+                            if guild_id in command_data.permissions:
+                                command_dict["permissions"][guild_id] = command_data.permissions[
+                                    guild_id
+                                ]
+                            wait[guild_id][context_command_name] = copy.deepcopy(command_dict)
                     else:
                         if "global" not in wait:
                             wait["global"] = {}
-                        command_dict = {
-                            "name": _x,
-                            "options": selected.options or [],
-                            "default_permission": selected.default_permission,
-                            "permissions": selected.permissions or {},
-                            "type": selected._type,
-                        }
-                        wait["global"][_x] = copy.deepcopy(command_dict)
-
+                        command_dict = self.__get_dict_command_data(
+                            command_name, command_data, False
+                        )
+                        wait["global"][context_command_name] = copy.deepcopy(command_dict)
                 continue
 
-            selected = self.commands[x]
-            if selected.allowed_guild_ids:
-                for y in selected.allowed_guild_ids:
-                    if y not in wait:
-                        wait[y] = {}
-                    command_dict = {
-                        "name": x,
-                        "description": selected.description or "No Description.",
-                        "options": selected.options or [],
-                        "default_permission": selected.default_permission,
-                        "permissions": {},
-                        "type": selected._type,
-                    }
+            command_data = self.commands[command_name]
+            if command_data.allowed_guild_ids:
+                for guild_id in command_data.allowed_guild_ids:
+                    if guild_id not in wait:
+                        wait[guild_id] = {}
+                    command_dict = self.__get_dict_command_data(command_name, command_data)
                     if command_dict["type"] != 1:
                         command_dict.pop("description")
-                    if y in selected.permissions:
-                        command_dict["permissions"][y] = selected.permissions[y]
-                    wait[y][x] = copy.deepcopy(command_dict)
+                    if guild_id in command_data.permissions:
+                        command_dict["permissions"][guild_id] = command_data.permissions[guild_id]
+                    wait[guild_id][command_name] = copy.deepcopy(command_dict)
             else:
                 if "global" not in wait:
                     wait["global"] = {}
-                command_dict = {
-                    "name": x,
-                    "description": selected.description or "No Description.",
-                    "options": selected.options or [],
-                    "default_permission": selected.default_permission,
-                    "permissions": selected.permissions or {},
-                    "type": selected._type,
-                }
+                command_dict = self.__get_dict_command_data(command_name, command_data)
                 if command_dict["type"] != 1:
                     command_dict.pop("description")
-                wait["global"][x] = copy.deepcopy(command_dict)
+                wait["global"][command_name] = copy.deepcopy(command_dict)
 
         # Separated normal command add and subcommand add not to
         # merge subcommands to one. More info at Issue #88
         # https://github.com/eunwoo1104/discord-py-slash-command/issues/88
 
-        for x in self.commands:
-            if x == "context":
+        for command_name in self.commands:
+            if command_name == "context":
                 continue  # no menus have subcommands.
 
-            if not self.commands[x].has_subcommands:
+            if not self.commands[command_name].has_subcommands:
                 continue
-            tgt = self.subcommands[x]
-            for y in tgt:
-                sub = tgt[y]
-                if isinstance(sub, SubcommandObject):
+            target = self.subcommands[command_name]
+            for group_name, group_data in target.items():
+                if isinstance(group_data, SubcommandObject):
                     _dict = {
-                        "name": sub.name,
-                        "description": sub.description or "No Description.",
+                        "name": group_name,
+                        "description": group_data.description or "No Description.",
                         "type": SlashCommandOptionType.SUB_COMMAND,
-                        "options": sub.options or [],
+                        "options": group_data.options or [],
                     }
-                    if sub.allowed_guild_ids:
-                        for z in sub.allowed_guild_ids:
-                            wait[z][x]["options"].append(_dict)
+                    if group_data.allowed_guild_ids:
+                        for guild_id in group_data.allowed_guild_ids:
+                            wait[guild_id][command_name]["options"].append(_dict)
                     else:
-                        wait["global"][x]["options"].append(_dict)
+                        wait["global"][command_name]["options"].append(_dict)
                 else:
                     queue = {}
                     base_dict = {
-                        "name": y,
+                        "name": group_name,
                         "description": "No Description.",
                         "type": SlashCommandOptionType.SUB_COMMAND_GROUP,
                         "options": [],
                     }
-                    for z in sub:
-                        sub_sub = sub[z]
+                    for subcommand_data in group_data.values():
                         _dict = {
-                            "name": sub_sub.name,
-                            "description": sub_sub.description or "No Description.",
+                            "name": subcommand_data.name,
+                            "description": subcommand_data.description or "No Description.",
                             "type": SlashCommandOptionType.SUB_COMMAND,
-                            "options": sub_sub.options or [],
+                            "options": subcommand_data.options or [],
                         }
-                        if sub_sub.allowed_guild_ids:
-                            for i in sub_sub.allowed_guild_ids:
-                                if i not in queue:
-                                    queue[i] = copy.deepcopy(base_dict)
-                                queue[i]["options"].append(_dict)
+                        if subcommand_data.allowed_guild_ids:
+                            for guild_id in subcommand_data.allowed_guild_ids:
+                                if guild_id not in queue:
+                                    queue[guild_id] = copy.deepcopy(base_dict)
+                                queue[guild_id]["options"].append(_dict)
                         else:
                             if "global" not in queue:
                                 queue["global"] = copy.deepcopy(base_dict)
                             queue["global"]["options"].append(_dict)
-                    for i in queue:
-                        wait[i][x]["options"].append(queue[i])
+                    for guild_id in queue:
+                        wait[guild_id][command_name]["options"].append(queue[guild_id])
 
-        for x in wait:
-            if x == "global":
-                [cmds["global"].append(n) for n in wait["global"].values()]
+        for command_name in wait:
+            if command_name == "global":
+                [cmds["global"].append(command) for command in wait["global"].values()]
             else:
-                [cmds["guild"][x].append(n) for n in wait[x].values()]
+                [
+                    cmds["guild"][command_name].append(command_data)
+                    for command_data in wait[command_name].values()
+                ]
 
         return cmds
+
+    def __get_dict_command_data(
+        self, command_name: str, command_data: CommandData, is_slash_command: bool = True
+    ):
+        """
+        Converts CommandData into dict.
+        """
+        default_member_permissions = (
+            str(Permissions.USE_APPLICATION_COMMANDS.value)
+            if command_data.default_member_permissions is None
+            else str(command_data.default_member_permissions.value)
+        )
+        return (
+            {
+                "description": command_data.description or "No Description.",
+                "options": command_data.options or [],
+            }
+            if is_slash_command
+            else {}
+        ) | {
+            "name": command_name,
+            "default_member_permissions": default_member_permissions,
+            "dm_permission": command_data.dm_permission,
+            "permissions": {},
+            "type": command_data._type,
+        }
 
     async def sync_all_commands(
         self, delete_from_unused_guilds=False, delete_perms_from_unused_guilds=False
@@ -589,7 +595,8 @@ class SlashCommand:
         description: str = None,
         guild_ids: typing.List[int] = None,
         options: list = None,
-        default_permission: bool = True,
+        default_member_permissions: Permissions = None,
+        dm_permission: bool = True,
         permissions: typing.Dict[int, list] = None,
         connector: dict = None,
         has_subcommands: bool = False,
@@ -611,8 +618,10 @@ class SlashCommand:
         :type guild_ids: List[int]
         :param options: Options of the slash command. This will affect ``auto_convert`` and command data at Discord API. Default ``None``.
         :type options: list
-        :param default_permission: Sets if users have permission to run slash command by default, when no permissions are set. Default ``True``.
-        :type default_permission: bool
+        :param default_member_permissions: Sets if users have permission to run slash command in the guild, when no permissions are set.
+        :type default_member_permissions: Permissions
+        :param dm_permission: Sets if users have permission to run slash command in dm
+        :type dm_permission: bool
         :param permissions: Dictionary of permissions of the slash command. Key being target guild_id and value being a list of permissions to apply. Default ``None``.
         :type permissions: dict
         :param connector: Kwargs connector for the command. Default ``None``.
@@ -646,7 +655,8 @@ class SlashCommand:
             "description": description,
             "guild_ids": guild_ids,
             "api_options": options,
-            "default_permission": default_permission,
+            "default_member_permissions": default_member_permissions,
+            "dm_permission": dm_permission,
             "api_permissions": permissions,
             "connector": connector or {},
             "has_subcommands": has_subcommands,
@@ -698,7 +708,8 @@ class SlashCommand:
                     guild_ids.append(x)
 
         _cmd = {
-            "default_permission": None,
+            "default_member_permissions": None,
+            "dm_permission": True,
             "has_permissions": None,
             "name": name,
             "type": _type,
@@ -724,7 +735,8 @@ class SlashCommand:
         name=None,
         description: str = None,
         base_description: str = None,
-        base_default_permission: bool = True,
+        base_default_member_permissions: Permissions = None,
+        base_dm_permission: bool = True,
         base_permissions: typing.Dict[int, list] = None,
         subcommand_group_description: str = None,
         guild_ids: typing.List[int] = None,
@@ -746,8 +758,10 @@ class SlashCommand:
         :type description: str
         :param base_description: Description of the base command. Default ``None``.
         :type base_description: str
-        :param base_default_permission: Sets if users have permission to run base command by default, when no permissions are set. Default ``True``.
-        :type base_default_permission: bool
+        :param base_default_member_permissions: Sets if users have permission to run slash command in the guild, when no permissions are set.
+        :type base_default_member_permissions: Permissions
+        :param base_dm_permission: Sets if users have permission to run slash command in dm
+        :type base_dm_permission: bool
         :param base_permissions: Dictionary of permissions of the slash command. Key being target guild_id and value being a list of permissions to apply. Default ``None``.
         :type base_permissions: dict
         :param subcommand_group_description: Description of the subcommand_group. Default ``None``.
@@ -783,7 +797,8 @@ class SlashCommand:
             "description": base_description,
             "guild_ids": guild_ids.copy(),
             "api_options": [],
-            "default_permission": base_default_permission,
+            "default_member_permissions": base_default_member_permissions,
+            "dm_permission": base_dm_permission,
             "api_permissions": base_permissions,
             "connector": {},
             "has_subcommands": True,
@@ -838,7 +853,8 @@ class SlashCommand:
         description: str = None,
         guild_ids: typing.List[int] = None,
         options: typing.List[dict] = None,
-        default_permission: bool = True,
+        default_member_permissions: Permissions = None,
+        dm_permission: bool = True,
         permissions: dict = None,
         connector: dict = None,
     ):
@@ -891,8 +907,10 @@ class SlashCommand:
         :type guild_ids: List[int]
         :param options: Options of the slash command. This will affect ``auto_convert`` and command data at Discord API. Default ``None``.
         :type options: List[dict]
-        :param default_permission: Sets if users have permission to run slash command by default, when no permissions are set. Default ``True``.
-        :type default_permission: bool
+        :param default_member_permissions: Sets if users have permission to run slash command in the guild, when no permissions are set.
+        :type default_member_permissions: Permissions
+        :param dm_permission: Sets if users have permission to run slash command in dm
+        :type dm_permission: bool
         :param permissions: Permission requirements of the slash command. Default ``None``.
         :type permissions: dict
         :param connector: Kwargs connector for the command. Default ``None``.
@@ -912,7 +930,8 @@ class SlashCommand:
                 description,
                 guild_ids,
                 options,
-                default_permission,
+                default_member_permissions,
+                dm_permission,
                 permissions,
                 connector,
             )
@@ -930,7 +949,8 @@ class SlashCommand:
         description: str = None,
         base_description: str = None,
         base_desc: str = None,
-        base_default_permission: bool = True,
+        base_default_member_permissions: Permissions = None,
+        base_dm_permission: bool = False,
         base_permissions: dict = None,
         subcommand_group_description: str = None,
         sub_group_desc: str = None,
@@ -977,8 +997,10 @@ class SlashCommand:
         :param base_description: Description of the base command. Default ``None``.
         :type base_description: str
         :param base_desc: Alias of ``base_description``.
-        :param base_default_permission: Sets if users have permission to run slash command by default, when no permissions are set. Default ``True``.
-        :type base_default_permission: bool
+        :param base_default_member_permissions: Sets if users have permission to run slash command in the guild, when no permissions are set.
+        :type base_default_member_permissions: Permissions
+        :param base_dm_permission: Sets if users have permission to run slash command in dm
+        :type base_dm_permission: bool
         :param permissions: Permission requirements of the slash command. Default ``None``.
         :type permissions: dict
         :param subcommand_group_description: Description of the subcommand_group. Default ``None``.
@@ -1008,7 +1030,8 @@ class SlashCommand:
                 name,
                 description,
                 base_description,
-                base_default_permission,
+                base_default_member_permissions,
+                base_dm_permission,
                 base_permissions,
                 subcommand_group_description,
                 guild_ids,
