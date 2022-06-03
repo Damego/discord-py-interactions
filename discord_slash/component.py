@@ -370,6 +370,8 @@ class Select(Component):
     :type max_values: int
     :param disabled: Disables this component. Defaults to ``False``.
     :type disabled: bool
+    :param values: The list of selected values.
+    :type values: List[str]
     :returns: :class:`Select`
     """
 
@@ -380,27 +382,27 @@ class Select(Component):
         "_min_values",
         "_max_values",
         "_disabled",
+        "_values",
     )
 
     def __init__(
         self,
         *,
-        options: List[SelectOption],
+        options: List[SelectOption] = None,
         custom_id: str = None,
         placeholder: str = None,
         min_values: int = 1,
         max_values: int = 1,
         disabled: bool = False,
+        values: List[str] = None,
     ):
-        if (not len(options)) or (len(options) > 25):
-            raise InvalidArgument("Options length should be between 1 and 25.")
-
         self._custom_id = custom_id or str(uuid1())
         self._options = options
         self._placeholder = placeholder
         self._min_values = min_values
         self._max_values = max_values
         self._disabled = disabled
+        self._values = values
 
     def to_dict(self) -> dict:
         return {
@@ -411,6 +413,7 @@ class Select(Component):
             "min_values": self.min_values,
             "max_values": self.max_values,
             "disabled": self.disabled,
+            "values": self.values,
         }
 
     @property
@@ -436,6 +439,10 @@ class Select(Component):
     @property
     def disabled(self) -> bool:
         return self._disabled
+
+    @property
+    def values(self) -> List[str]:
+        return self._values
 
     @custom_id.setter
     def custom_id(self, value: str):
@@ -486,11 +493,14 @@ class Select(Component):
     def from_json(cls, data: dict):
         return cls(
             custom_id=data.get("custom_id"),
-            options=list(map(lambda x: SelectOption.from_json(x), data.get("options"))),
+            options=list(map(lambda x: SelectOption.from_json(x), data["options"]))
+            if data.get("options")
+            else None,
             placeholder=data.get("placeholder"),
             min_values=data.get("min_values"),
             max_values=data.get("max_values"),
             disabled=data.get("disabled", False),
+            values=data.get("values"),
         )
 
 
@@ -735,6 +745,8 @@ class ActionRow(Component):
         components = data.get("components")
         if all(component.get("type") == 2 for component in components):
             return cls(*[Button.from_json(component) for component in data.get("components")])
+        elif all(component.get("type") == 3 for component in components):
+            return cls(*[Select.from_json(component) for component in data.get("components")])
         elif all(component.get("type") == 4 for component in components):
             return cls(*[TextInput.from_json(component) for component in data.get("components")])
 

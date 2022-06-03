@@ -7,7 +7,7 @@ from discord.ext import commands
 from discord.utils import snowflake_time
 
 from . import error, http, model
-from .component import ActionRow, Component, Modal, _get_components_json
+from .component import ActionRow, Component, Modal, Select, _get_components_json
 from .dpy_overrides import ComponentMessage
 
 if TYPE_CHECKING:
@@ -556,7 +556,9 @@ class ModalContext(InteractionContext):
         self.values = {}
         for row in self.components:
             for component in row.components:
-                self.values[component.custom_id] = component.value
+                self.values[component.custom_id] = (
+                    component.values if isinstance(component, Select) else component.value
+                )
 
 
 class ComponentContext(InteractionContext):
