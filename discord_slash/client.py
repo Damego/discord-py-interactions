@@ -1331,7 +1331,7 @@ class SlashCommand:
             [guild.get_member, guild.fetch_member],
             guild.get_channel,
             guild.get_role,
-            "Attachment",
+            Attachment,
         ]
 
         types = {
@@ -1377,9 +1377,7 @@ class SlashCommand:
                         processed = cache_first
                     else:
                         loaded_converter = loaded_converter[1]
-                elif isinstance(
-                    loaded_converter, str
-                ):  # isinstance(loaded_converter, Attachment) is False
+                elif loaded_converter is Attachment:
                     processed = Attachment(
                         data=data["resolved"]["attachments"][x["value"]], state=guild._state
                     )
