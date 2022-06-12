@@ -8,6 +8,7 @@ Simple Discord Slash Command extension for discord.py
 
 from .client import SlashCommand  # noqa: F401
 from .component import (  # noqa: F401
+    ActionRow,
     Button,
     ButtonStyle,
     Modal,
